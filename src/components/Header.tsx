@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, Plus, Mail, User, Shield, Flame, Award, Sparkles } from 'lucide-react';
+import { Menu, Plus, Mail, User, Shield, Flame, Award, Sparkles, Cloud } from 'lucide-react';
 import { User as UserType } from '../types';
 
 interface HeaderProps {
@@ -107,18 +107,25 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="btn-header-auth-switch"
             onClick={onOpenAuthModal}
-            className="flex items-center space-x-2 p-1 sm:px-2 sm:py-1 rounded-xl bg-[#0a0d14] border border-[#1e293b] hover:border-slate-500 transition-all"
-            title="สลับบัญชี / จัดการ Cloud Sync"
+            className="flex items-center space-x-2 p-1 sm:px-2.5 sm:py-1 rounded-xl bg-[#0a0d14] border border-[#1e293b] hover:border-slate-500 transition-all"
+            title="ล็อกอินด้วยอีเมล / สลับบัญชี / จัดการ Cloud Sync"
           >
-            <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-slate-700 to-slate-500 border border-slate-400 flex items-center justify-center text-[10px] font-mono font-bold text-white shadow-sm">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-slate-700 to-slate-500 border border-slate-400 flex items-center justify-center text-[10px] font-mono font-bold text-white shadow-sm shrink-0">
               {initials}
             </div>
             <div className="hidden lg:block text-left">
-              <div className="text-xs font-bold text-white tracking-tight leading-tight">
-                {currentUser?.displayName || 'Trader'}
+              <div className="text-xs font-bold text-white tracking-tight leading-tight flex items-center gap-1">
+                <span className="truncate max-w-[120px]">{currentUser?.displayName || 'Trader'}</span>
+                {currentUser?.email && (
+                  <Cloud className="w-3 h-3 text-blue-400 shrink-0" title={`Cloud Synced with ${currentUser.email}`} />
+                )}
               </div>
               <div className="text-[10px] font-mono text-blue-400">
-                ${(currentUser?.accountBalance || 0).toLocaleString()}
+                {currentUser?.email ? (
+                  <span className="text-[9px] text-slate-400 truncate block max-w-[120px]">{currentUser.email}</span>
+                ) : (
+                  `$${(currentUser?.accountBalance || 0).toLocaleString()}`
+                )}
               </div>
             </div>
           </button>

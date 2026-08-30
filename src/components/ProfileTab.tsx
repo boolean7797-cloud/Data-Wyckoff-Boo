@@ -21,6 +21,7 @@ import {
   ChevronRight,
   Sparkles,
   Mail,
+  Cloud,
 } from 'lucide-react';
 import {
   User,
@@ -191,33 +192,49 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
   return (
     <div className="w-full max-w-3xl mx-auto px-3.5 sm:px-6 py-4 space-y-4 pb-28">
       {/* User Identity Banner */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-[#06080e] border border-[#1e293b] shadow-xl flex items-center justify-between">
+      <div className="p-4 sm:p-5 rounded-2xl bg-[#06080e] border border-[#1e293b] shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-slate-200 via-slate-400 to-slate-600 flex items-center justify-center font-mono font-extrabold text-sm text-black shadow-[0_0_15px_rgba(203,213,225,0.3)] border border-white/40">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-slate-200 via-slate-400 to-slate-600 flex items-center justify-center font-mono font-extrabold text-sm text-black shadow-[0_0_15px_rgba(203,213,225,0.3)] border border-white/40 shrink-0">
             {currentUser.displayName.slice(0, 2).toUpperCase()}
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-base sm:text-lg font-extrabold text-[#f8fafc] font-['Plus_Jakarta_Sans']">
                 {currentUser.displayName}
               </h2>
-              <span className="text-xs font-mono text-slate-400">(@{currentUser.username})</span>
+              {currentUser.email ? (
+                <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-blue-950/80 text-blue-300 border border-blue-800 rounded-full flex items-center gap-1">
+                  <Cloud className="w-2.5 h-2.5 text-blue-400" />
+                  <span>{currentUser.email}</span>
+                </span>
+              ) : (
+                <span className="text-xs font-mono text-slate-400">(@{currentUser.username})</span>
+              )}
             </div>
-            <div className="text-xs font-mono text-slate-300 flex items-center gap-1.5">
+            <div className="text-xs font-mono text-slate-300 flex items-center gap-1.5 mt-0.5">
               <span>{currentUser?.title || ''}</span>
               <span className="text-slate-500">•</span>
               <span className="text-slate-400">{safeTrades.length} ไม้ในบันทึก</span>
+              {currentUser.email && (
+                <>
+                  <span className="text-slate-500">•</span>
+                  <span className="text-emerald-400 text-[11px] flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse" />
+                    <span>Cloud Synced</span>
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </div>
 
         <button
           onClick={onOpenAuthModal}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0e131f] hover:bg-[#1a233a] text-slate-300 hover:text-white text-xs font-mono border border-[#1e293b] transition-all"
-          title="สลับบัญชีหรือสร้างไอดีใหม่บนเครื่องนี้"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-950/60 to-slate-900 hover:from-blue-900 hover:to-slate-800 text-blue-200 hover:text-white text-xs font-mono border border-blue-800/80 transition-all shadow-sm"
+          title="สลับบัญชีอีเมล หรือ จัดการ Cloud Multi-Device Sync"
         >
-          <LogOut className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">สลับไอดี</span>
+          <Cloud className="w-3.5 h-3.5 text-blue-400" />
+          <span>{currentUser.email ? 'จัดการบัญชีคลาวด์' : 'ล็อกอินด้วยอีเมล (Cloud)'}</span>
         </button>
       </div>
 

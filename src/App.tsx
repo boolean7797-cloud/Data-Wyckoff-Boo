@@ -1,4 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { onAuthStateChanged } from 'firebase/auth';
+import {
+  auth,
+  subscribeToUserCloudData,
+  saveUserCloudData,
+  fetchUserCloudData,
+} from './services/firebase';
 import { Header } from './components/Header';
 import { Navbar } from './components/Navbar';
 import { SidebarDrawer } from './components/SidebarDrawer';
@@ -182,33 +189,131 @@ export default function App() {
   const [manageCustomType, setManageCustomType] = useState<'pairs' | null>(null);
 
   // ==========================================
-  // MULTI-DEVICE CLOUD SYNC ENGINE
+  // MULTI-DEVICE CLOUD SYNC & FIREBASE ENGINE
   // ==========================================
-  const syncToCloud = useCallback(async () => {
+  const isSyncingFromFirestore = useRef(false);
+
+  // 1. Firebase Auth listener for email-based login across any device
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+      if (fbUser) {
+        const fbUid = fbUser.uid;
+        const fbEmail = fbUser.email || '';
+        const fbDisplayName = fbUser.displayName || fbEmail.split('@')[0] || 'Trader';
+
+        // Add or update authenticated user in local state
+        setUsers((prev) => {
+          const exists = prev.find((u) => u.id === fbUid);
+          if (exists) {
+            return prev.map((u) =>
+              u.id === fbUid
+                ? { ...u, email: fbEmail, displayName: u.displayName || fbDisplayName, isFirebaseUser: true }
+                : u
+            );
+          }
+          const newUser: User = {
+            id: fbUid,
+            email: fbEmail,
+            username: fbEmail.split('@')[0] || 'trader',
+            displayName: fbDisplayName,
+            title: 'Ghost Trader',
+            accountBalance: 50000,
+            fundedBalance: 100000,
+            createdAt: new Date().toISOString(),
+            lastSyncedAt: new Date().toISOString(),
+            isFirebaseUser: true,
+          };
+          return [newUser, ...prev];
+        });
+
+        setCurrentUserId(fbUid);
+
+        // Fetch initial cloud profile from Firestore
+        const cloudData = await fetchUserCloudData(fbUid);
+        if (cloudData) {
+          isSyncingFromFirestore.current = true;
+          if (Array.isArray(cloudData.trades)) setTrades(cloudData.trades);
+          if (Array.isArray(cloudData.setupItems)) setSetupItems(cloudData.setupItems);
+          if (Array.isArray(cloudData.pairs)) setPairs(cloudData.pairs);
+          if (Array.isArray(cloudData.emotions)) setEmotions(cloudData.emotions);
+          if (Array.isArray(cloudData.invalidationReasons)) setInvalidationReasons(cloudData.invalidationReasons);
+          if (Array.isArray(cloudData.fundedAccounts)) setFundedAccounts(cloudData.fundedAccounts);
+          if (cloudData.dailyTargetConfig) setDailyTargetConfig(cloudData.dailyTargetConfig);
+          if (cloudData.milestoneConfig) setMilestoneConfig(cloudData.milestoneConfig);
+          if (cloudData.multiPortfolioConfig) setMultiPortfolioConfig(cloudData.multiPortfolioConfig);
+          if (Array.isArray(cloudData.recaps)) setRecaps(cloudData.recaps);
+          setTimeout(() => {
+            isSyncingFromFirestore.current = false;
+          }, 500);
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // 2. Realtime subscription to Cloud Firestore for active user
+  useEffect(() => {
     if (!currentUserId) return;
+
+    const unsub = subscribeToUserCloudData(currentUserId, (cloudData) => {
+      if (!cloudData) return;
+      isSyncingFromFirestore.current = true;
+      if (Array.isArray(cloudData.trades)) setTrades(cloudData.trades);
+      if (Array.isArray(cloudData.setupItems)) setSetupItems(cloudData.setupItems);
+      if (Array.isArray(cloudData.pairs)) setPairs(cloudData.pairs);
+      if (Array.isArray(cloudData.emotions)) setEmotions(cloudData.emotions);
+      if (Array.isArray(cloudData.invalidationReasons)) setInvalidationReasons(cloudData.invalidationReasons);
+      if (Array.isArray(cloudData.fundedAccounts)) setFundedAccounts(cloudData.fundedAccounts);
+      if (cloudData.dailyTargetConfig) setDailyTargetConfig(cloudData.dailyTargetConfig);
+      if (cloudData.milestoneConfig) setMilestoneConfig(cloudData.milestoneConfig);
+      if (cloudData.multiPortfolioConfig) setMultiPortfolioConfig(cloudData.multiPortfolioConfig);
+      if (Array.isArray(cloudData.recaps)) setRecaps(cloudData.recaps);
+      setTimeout(() => {
+        isSyncingFromFirestore.current = false;
+      }, 500);
+    });
+
+    return () => {
+      if (unsub) unsub();
+    };
+  }, [currentUserId]);
+
+  // 3. Push updates to Cloud Firestore & Local Server
+  const syncToCloud = useCallback(async () => {
+    if (!currentUserId || isSyncingFromFirestore.current) return;
     try {
       const payload = {
         userId: currentUserId,
-        user: currentUser,
+        user: {
+          ...currentUser,
+          lastSyncedAt: new Date().toISOString(),
+        },
         trades,
         setupItems,
         setups,
         pairs,
+        emotions,
+        invalidationReasons,
         fundedAccounts,
         dailyTargetConfig,
         milestoneConfig,
         multiPortfolioConfig,
         recaps,
-        lastSyncedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
 
+      // Direct sync to Cloud Firestore
+      await saveUserCloudData(currentUserId, payload);
+
+      // Server backup endpoint
       await fetch(`/api/sync/${encodeURIComponent(currentUserId)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
     } catch (e) {
-      console.log('Cloud sync background sync note (offline or local mode):', e);
+      console.log('Cloud sync background sync note:', e);
     }
   }, [
     currentUserId,
@@ -217,6 +322,8 @@ export default function App() {
     setupItems,
     setups,
     pairs,
+    emotions,
+    invalidationReasons,
     fundedAccounts,
     dailyTargetConfig,
     milestoneConfig,
@@ -228,13 +335,28 @@ export default function App() {
   useEffect(() => {
     const timer = setTimeout(() => {
       syncToCloud();
-    }, 1500);
+    }, 1200);
     return () => clearTimeout(timer);
   }, [syncToCloud]);
 
   // Pull from Cloud on initial load or user change
   const pullFromCloud = useCallback(async (targetUserId: string) => {
     try {
+      const cloudData = await fetchUserCloudData(targetUserId);
+      if (cloudData) {
+        if (Array.isArray(cloudData.trades)) setTrades(cloudData.trades);
+        if (Array.isArray(cloudData.setupItems)) setSetupItems(cloudData.setupItems);
+        if (Array.isArray(cloudData.pairs)) setPairs(cloudData.pairs);
+        if (Array.isArray(cloudData.emotions)) setEmotions(cloudData.emotions);
+        if (Array.isArray(cloudData.invalidationReasons)) setInvalidationReasons(cloudData.invalidationReasons);
+        if (Array.isArray(cloudData.fundedAccounts)) setFundedAccounts(cloudData.fundedAccounts);
+        if (cloudData.dailyTargetConfig) setDailyTargetConfig(cloudData.dailyTargetConfig);
+        if (cloudData.milestoneConfig) setMilestoneConfig(cloudData.milestoneConfig);
+        if (cloudData.multiPortfolioConfig) setMultiPortfolioConfig(cloudData.multiPortfolioConfig);
+        if (Array.isArray(cloudData.recaps)) setRecaps(cloudData.recaps);
+        return true;
+      }
+
       const res = await fetch(`/api/sync/${encodeURIComponent(targetUserId)}`);
       if (res.ok) {
         const json = await res.json();
@@ -717,7 +839,7 @@ export default function App() {
         onLogin={handleLogin}
         onRegister={handleRegister}
         onDeleteUser={handleDeleteUser}
-        onCloudSyncAccount={pullFromCloud}
+        onCloudSyncSuccess={() => pullFromCloud(currentUserId)}
       />
 
       {/* 7. MANAGE SETUP ITEMS & PLAYBOOK DESCRIPTIONS MODAL */}

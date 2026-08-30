@@ -34,14 +34,17 @@ export interface FundedAccountConfig {
 
 export interface User {
   id: string;
+  email?: string;
   username: string;
   password?: string;
   displayName: string;
   title: string;
+  photoURL?: string;
   accountBalance: number; // พอร์ตส่วนตัว (Personal Balance)
   fundedBalance?: number; // พอร์ตกองทุน (Funded Balance)
   createdAt: string;
   lastSyncedAt?: string;
+  isFirebaseUser?: boolean;
 }
 
 export type TradeOutcome = 'WIN' | 'LOSE' | 'BE' | 'MISS';
