@@ -687,6 +687,8 @@ export default function App() {
         {/* Top Header */}
         <Header
           currentUser={currentUser}
+          activeTab={activeTab}
+          onSelectTab={setActiveTab}
           onOpenSidebar={() => setIsSidebarOpen(true)}
           onOpenProfile={() => setActiveTab('profile')}
           onOpenAuthModal={() => setIsAuthModalOpen(true)}
@@ -696,7 +698,7 @@ export default function App() {
         />
 
         {/* Dynamic Tab Views */}
-        <main className="flex-1 w-full max-w-6xl mx-auto">
+        <main className="flex-1 w-full max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
           {activeTab === 'home' && (
             <HomeTab
               currentUser={currentUser}

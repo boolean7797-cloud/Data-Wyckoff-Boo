@@ -216,7 +216,7 @@ export const TradeLogsTab: React.FC<TradeLogsTabProps> = ({
   }, [filteredTrades]);
 
   return (
-    <div className="space-y-4 animate-fade-in font-['Outfit',sans-serif]">
+    <div className="space-y-4 animate-fade-in font-['Outfit',sans-serif] pb-24 md:pb-8">
       {/* 1. Header with Stats & Action Button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#06080e] border border-[#1e293b] p-4 rounded-2xl shadow-xl">
         <div className="flex items-center gap-3">

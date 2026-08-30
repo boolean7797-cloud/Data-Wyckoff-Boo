@@ -234,6 +234,13 @@ export async function saveUserCloudData(
   payload: Partial<UserCloudProfile>
 ): Promise<void> {
   if (!userId) return;
+  
+  // Only attempt Firestore writes if user is authenticated with Firebase as this userId
+  const currentFbUser = auth.currentUser;
+  if (!currentFbUser || currentFbUser.uid !== userId) {
+    return;
+  }
+
   try {
     const userDocRef = doc(db, 'users', userId);
     await setDoc(
@@ -244,8 +251,10 @@ export async function saveUserCloudData(
       },
       { merge: true }
     );
-  } catch (error) {
-    console.error('Error saving to Cloud Firestore:', error);
+  } catch (error: any) {
+    if (error?.code !== 'permission-denied') {
+      console.error('Error saving to Cloud Firestore:', error);
+    }
   }
 }
 
@@ -256,14 +265,22 @@ export async function fetchUserCloudData(
   userId: string
 ): Promise<UserCloudProfile | null> {
   if (!userId) return null;
+
+  const currentFbUser = auth.currentUser;
+  if (!currentFbUser || currentFbUser.uid !== userId) {
+    return null;
+  }
+
   try {
     const userDocRef = doc(db, 'users', userId);
     const snap = await getDoc(userDocRef);
     if (snap.exists()) {
       return snap.data() as UserCloudProfile;
     }
-  } catch (error) {
-    console.error('Error fetching from Cloud Firestore:', error);
+  } catch (error: any) {
+    if (error?.code !== 'permission-denied') {
+      console.error('Error fetching from Cloud Firestore:', error);
+    }
   }
   return null;
 }
@@ -275,6 +292,13 @@ export function subscribeToUserCloudData(
   userId: string,
   onData: (data: UserCloudProfile) => void
 ): Unsubscribe {
+  if (!userId) return () => {};
+
+  const currentFbUser = auth.currentUser;
+  if (!currentFbUser || currentFbUser.uid !== userId) {
+    return () => {};
+  }
+
   const userDocRef = doc(db, 'users', userId);
   return onSnapshot(
     userDocRef,
@@ -284,7 +308,9 @@ export function subscribeToUserCloudData(
       }
     },
     (err) => {
-      console.warn('Firestore subscription warning:', err);
+      if (err?.code !== 'permission-denied') {
+        console.warn('Firestore subscription warning:', err);
+      }
     }
   );
 }

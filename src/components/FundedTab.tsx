@@ -145,7 +145,7 @@ export const FundedTab: React.FC<FundedTabProps> = ({
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-3 sm:px-6 py-4 space-y-4 pb-28 animate-fade-in font-['Outfit',sans-serif]">
+    <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-4 space-y-4 pb-24 md:pb-8 animate-fade-in font-['Outfit',sans-serif]">
       {/* Header Banner */}
       <div className="p-4 sm:p-6 rounded-2xl bg-gradient-to-br from-[#06080e] via-[#090d16] to-[#04060a] border border-[#1e293b] shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">

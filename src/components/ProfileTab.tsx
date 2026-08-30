@@ -190,7 +190,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto px-3.5 sm:px-6 py-4 space-y-4 pb-28">
+    <div className="w-full max-w-5xl mx-auto px-3 sm:px-6 py-4 space-y-4 pb-24 md:pb-8">
       {/* User Identity Banner */}
       <div className="p-4 sm:p-5 rounded-2xl bg-[#06080e] border border-[#1e293b] shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">

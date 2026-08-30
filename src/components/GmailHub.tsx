@@ -170,7 +170,7 @@ export const GmailHub: React.FC<GmailHubProps> = ({
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-6 max-w-5xl mx-auto pb-24">
+    <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto pb-24 md:pb-8">
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-[#0e1117] to-[#06080e] border border-[#1e293b]">
         <div className="flex items-center space-x-3.5">

@@ -303,7 +303,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   };
 
   return (
-    <div className="w-full px-3.5 sm:px-6 py-4 space-y-4 pb-28 animate-fade-in">
+    <div className="w-full px-2 sm:px-4 lg:px-6 py-4 space-y-4 pb-24 md:pb-8 animate-fade-in">
       {/* 1. TOP ACCOUNT & PERFORMANCE BANNER WITH PROMINENT ADD TRADE BUTTON */}
       <div className="p-4 sm:p-6 rounded-2xl bg-gradient-to-r from-[#06080e] via-[#0d121c] to-[#06080e] border border-slate-700/80 shadow-[0_0_30px_rgba(0,0,0,0.8)] relative overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
