@@ -1,0 +1,915 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  X,
+  Sparkles,
+  TrendingUp,
+  TrendingDown,
+  Clock,
+  Coins,
+  Check,
+  Tag,
+  AlertCircle,
+  Plus,
+  Trash2,
+  Briefcase,
+  SlidersHorizontal,
+  Target,
+  Image,
+  Camera,
+  Layers,
+  HelpCircle,
+  Compass,
+  AlertTriangle,
+  PlayCircle,
+  Activity,
+  Flame,
+} from 'lucide-react';
+import {
+  Trade,
+  TradeOutcome,
+  TradeStatus,
+  TrendAlignment,
+  PortfolioType,
+  SetupItem,
+} from '../types';
+import {
+  TIMEFRAME_PRESETS,
+  DEFAULT_SCREENSHOT,
+  DEFAULT_EMOTIONS,
+  DEFAULT_INVALIDATION_REASONS,
+} from '../data/mockData';
+
+interface AddEditTradeModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSaveTrade: (trade: Trade) => void;
+  editingTrade?: Trade | null;
+  tradeToEdit?: Trade | null;
+  setups: SetupItem[];
+  pairs: string[];
+  emotions?: string[];
+  onAddEmotion?: (newEmotion: string) => void;
+  onDeleteEmotion?: (emotionToDelete: string) => void;
+  onOpenManageSetups?: () => void;
+  onOpenManagePairs?: () => void;
+  defaultPortfolio?: PortfolioType;
+}
+
+// Helper to get local date time formatted for datetime-local input (YYYY-MM-DDTHH:mm)
+const getNowLocalISOString = (): string => {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - offset).toISOString().slice(0, 16);
+};
+
+// Helper to auto-detect trading session based on current Bangkok/local hour
+const detectAutoSession = (): string => {
+  const hour = new Date().getHours();
+  // Asia session: 06:00 - 14:00
+  if (hour >= 6 && hour < 14) return 'Asia (06:00-14:00)';
+  // London session: 14:00 - 19:00
+  if (hour >= 14 && hour < 19) return 'London (14:00-19:00)';
+  // NY Overlap session: 19:00 - 22:00
+  if (hour >= 19 && hour < 22) return 'NY Overlap (19:00-22:00)';
+  // New York late: 22:00 - 03:00
+  if (hour >= 22 || hour < 3) return 'New York (19:00-03:00)';
+  // Off-Session / Pre-Asia: 03:00 - 06:00
+  return 'Off-Session (นอกเวลา)';
+};
+
+export const AddEditTradeModal: React.FC<AddEditTradeModalProps> = ({
+  isOpen,
+  onClose,
+  onSaveTrade,
+  editingTrade,
+  tradeToEdit,
+  setups = [],
+  pairs = [],
+  onOpenManageSetups,
+  onOpenManagePairs,
+  defaultPortfolio = 'personal',
+}) => {
+  const activeTrade = editingTrade || tradeToEdit || null;
+  const safeSetups = Array.isArray(setups) ? setups : [];
+  const activeSetups = useMemo(() => safeSetups.filter((s) => s.enabled !== false), [safeSetups]);
+
+  // 1. Core Form State
+  const [portfolio, setPortfolio] = useState<PortfolioType>(defaultPortfolio);
+  const [pair, setPair] = useState(pairs[0] || 'BTC/USD');
+  const [outcome, setOutcome] = useState<TradeOutcome>('WIN');
+  const [tradeStatus, setTradeStatus] = useState<TradeStatus>('COMPLETED');
+  const [trendAlignment, setTrendAlignment] = useState<TrendAlignment>('PRO_TREND');
+  const [isScreenshotOnly, setIsScreenshotOnly] = useState(false);
+
+  // 2. Toggles (MANDATORY RULE: On NEW trade open, all optional toggles START AS OFF / CLOSED)
+  const [useSetup, setUseSetup] = useState(false);
+  const [setupType, setSetupType] = useState(activeSetups[0]?.name || 'Breakout & Retest');
+
+  const [useTimeframe, setUseTimeframe] = useState(false);
+  const [timeframe, setTimeframe] = useState('5m');
+
+  const [usePoints, setUsePoints] = useState(false);
+  const [tpPoints, setTpPoints] = useState('200');
+  const [slPoints, setSlPoints] = useState('100');
+  const [fiboTpLevel, setFiboTpLevel] = useState<'TP1' | 'TP2' | 'TP3' | 'Custom'>('Custom');
+
+  // 3. Time, Risk Reward, PnL, Notes & Screenshots
+  const [session, setSession] = useState(() => detectAutoSession());
+  const [date, setDate] = useState(() => getNowLocalISOString());
+  const [riskReward, setRiskReward] = useState<number>(2.0);
+  const [pnl, setPnl] = useState('500');
+  const [notes, setNotes] = useState('');
+  const [screenshots, setScreenshots] = useState<string[]>([DEFAULT_SCREENSHOT]);
+  const [imageUrlInput, setImageUrlInput] = useState('');
+
+  // Selected setup details
+  const selectedSetupDetails = useMemo(() => {
+    return safeSetups.find((s) => s.name === setupType);
+  }, [safeSetups, setupType]);
+
+  // Hydrate on edit or reset for brand new trade
+  useEffect(() => {
+    if (!isOpen) return;
+
+    if (activeTrade) {
+      setPortfolio(activeTrade.portfolio || 'personal');
+      setPair(activeTrade.pair || pairs[0] || 'BTC/USD');
+      setOutcome(activeTrade.outcome === 'LOSE' ? 'LOSE' : 'WIN');
+      setTradeStatus(activeTrade.tradeStatus || 'COMPLETED');
+      setTrendAlignment(activeTrade.trendAlignment || 'PRO_TREND');
+      setIsScreenshotOnly(Boolean(activeTrade.isScreenshotOnly));
+
+      // Setup toggle
+      if (activeTrade.setupType) {
+        setUseSetup(true);
+        setSetupType(activeTrade.setupType);
+      } else {
+        setUseSetup(false);
+      }
+
+      // Timeframe toggle
+      if (activeTrade.timeframe) {
+        setUseTimeframe(true);
+        setTimeframe(activeTrade.timeframe);
+      } else {
+        setUseTimeframe(false);
+      }
+
+      // TP / SL Points toggle
+      if (activeTrade.tpPoints !== undefined || activeTrade.slPoints !== undefined) {
+        setUsePoints(true);
+        setTpPoints(String(activeTrade.tpPoints ?? '200'));
+        setSlPoints(String(activeTrade.slPoints ?? '100'));
+        setFiboTpLevel(activeTrade.fiboTpLevel || 'Custom');
+      } else {
+        setUsePoints(false);
+      }
+
+      setSession(activeTrade.session || detectAutoSession());
+      setDate(activeTrade.date || getNowLocalISOString());
+      setRiskReward(typeof activeTrade.riskReward === 'number' ? activeTrade.riskReward : 2.0);
+      setPnl(String(Math.abs(activeTrade.pnl ?? 0)));
+      setNotes(activeTrade.notes || '');
+      setScreenshots(
+        activeTrade.screenshots && activeTrade.screenshots.length > 0
+          ? activeTrade.screenshots
+          : [DEFAULT_SCREENSHOT]
+      );
+      setImageUrlInput('');
+    } else {
+      // MANDATORY REQUIREMENT: For brand-new trade entry, ALL toggles START AS OFF / CLOSED
+      setPortfolio(defaultPortfolio);
+      setPair(pairs[0] || 'BTC/USD');
+      setOutcome('WIN');
+      setTradeStatus('COMPLETED');
+      setTrendAlignment('PRO_TREND');
+      setIsScreenshotOnly(false);
+
+      // ALL TOGGLES DEFAULT TO CLOSED (FALSE)
+      setUseSetup(false);
+      setSetupType(activeSetups[0]?.name || 'Breakout & Retest');
+      setUseTimeframe(false);
+      setTimeframe('5m');
+      setUsePoints(false);
+      setTpPoints('200');
+      setSlPoints('100');
+      setFiboTpLevel('Custom');
+
+      // Auto-detect current session and date/time
+      setSession(detectAutoSession());
+      setDate(getNowLocalISOString());
+      setRiskReward(2.0);
+      setPnl('500');
+      setNotes('');
+      setScreenshots([DEFAULT_SCREENSHOT]);
+      setImageUrlInput('');
+    }
+  }, [activeTrade, isOpen, defaultPortfolio, pairs, activeSetups]);
+
+  if (!isOpen) return null;
+
+  // Simple Fibo target selection (records which TP target, without auto-calculating/overwriting points or RR)
+  const handleSelectFibo = (level: 'TP1' | 'TP2' | 'TP3') => {
+    setFiboTpLevel((prev) => (prev === level ? 'Custom' : level));
+  };
+
+  const handleAddScreenshot = () => {
+    if (imageUrlInput.trim()) {
+      setScreenshots([...screenshots, imageUrlInput.trim()]);
+      setImageUrlInput('');
+    }
+  };
+
+  const handleRemoveScreenshot = (index: number) => {
+    setScreenshots(screenshots.filter((_, i) => i !== index));
+  };
+
+  const handleSyncCurrentTimeAndSession = () => {
+    setDate(getNowLocalISOString());
+    setSession(detectAutoSession());
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const parsedPnL = parseFloat(pnl) || 0;
+    let finalPnL = 0;
+    if (tradeStatus === 'MISSED') {
+      finalPnL = 0;
+    } else if (outcome === 'LOSE') {
+      finalPnL = -Math.abs(parsedPnL);
+    } else {
+      finalPnL = Math.abs(parsedPnL);
+    }
+
+    const safeRR = Math.min(500, Math.max(0, Number(riskReward) || 0));
+
+    const newOrUpdatedTrade: Trade = {
+      id: activeTrade ? activeTrade.id : `trade_${Date.now()}`,
+      portfolio,
+      pair,
+      outcome: tradeStatus === 'MISSED' ? 'MISS' : outcome,
+      tradeStatus,
+      trendAlignment,
+      isScreenshotOnly,
+      setupType: useSetup ? setupType : undefined,
+      setupDescription: useSetup ? selectedSetupDetails?.description : undefined,
+      session,
+      timeframe: useTimeframe ? timeframe : undefined,
+      riskReward: safeRR,
+      pnl: finalPnL,
+      date,
+      screenshots: screenshots.length > 0 ? screenshots : [DEFAULT_SCREENSHOT],
+      notes,
+      tpPoints: usePoints ? parseFloat(tpPoints) || 0 : undefined,
+      slPoints: usePoints ? parseFloat(slPoints) || 0 : undefined,
+      fiboTpLevel: usePoints ? fiboTpLevel : undefined,
+    };
+
+    onSaveTrade(newOrUpdatedTrade);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 overflow-y-auto">
+      {/* Backdrop */}
+      <div className="fixed inset-0 bg-black/85 backdrop-blur-md" onClick={onClose} />
+
+      {/* Modal Card */}
+      <div className="relative z-10 w-full max-w-2xl bg-[#06080e] border border-[#1e293b] rounded-2xl shadow-2xl overflow-hidden my-4 max-h-[92vh] flex flex-col animate-fade-in">
+        {/* Modal Header */}
+        <div className="p-4 sm:p-5 border-b border-[#1e293b] flex items-center justify-between bg-[#030407]">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-slate-200 via-slate-400 to-slate-600 p-0.5 shadow-[0_0_12px_rgba(203,213,225,0.3)] flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-slate-900" />
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-extrabold text-[#f8fafc] font-['Outfit',sans-serif] flex items-center gap-2">
+                <span>{activeTrade ? 'แก้ไขข้อมูลไม้เทรด' : 'บันทึกไม้เทรดใหม่ (Gengar - Wyk Labs Data Terminal)'}</span>
+                {isScreenshotOnly && (
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#38bdf8]/20 text-[#38bdf8] border border-[#38bdf8]/40">
+                    เก็บภาพเทรด (Backtest)
+                  </span>
+                )}
+              </h2>
+              <p className="text-[10px] text-slate-400 font-mono">
+                บันทึกและคำนวณสถิติ Win Rate, RR และ Edge แบบ Real-time
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-xl bg-[#0e131f] hover:bg-[#1e293b] text-slate-400 hover:text-white border border-[#1e293b] transition-all"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Scrollable Form Body */}
+        <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1 font-['Outfit',sans-serif]">
+          {/* ========================================================================= */}
+          {/* 1. PORTFOLIO & REAL VS BACKTEST TOGGLE */}
+          {/* ========================================================================= */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {/* Portfolio Selector (Personal vs Funded) */}
+            <div className="flex items-center justify-between bg-[#030407] p-1.5 rounded-xl border border-[#1e293b]">
+              <span className="text-[11px] font-mono text-slate-400 px-2 flex items-center gap-1.5">
+                <Briefcase className="w-3.5 h-3.5 text-slate-300" />
+                <span>พอร์ต:</span>
+              </span>
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => setPortfolio('personal')}
+                  className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all ${
+                    portfolio === 'personal'
+                      ? 'bg-gradient-to-r from-slate-200 to-slate-300 text-black shadow-[0_0_8px_rgba(255,255,255,0.3)]'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  พอร์ตส่วนตัว
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPortfolio('funded')}
+                  className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all ${
+                    portfolio === 'funded'
+                      ? 'bg-[#38bdf8] text-black shadow-[0_0_8px_rgba(56,189,248,0.4)]'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  พอร์ตกองทุน
+                </button>
+              </div>
+            </div>
+
+            {/* Live Trade vs Screenshot Only (Backtest / Case Study) Button */}
+            <button
+              type="button"
+              onClick={() => setIsScreenshotOnly(!isScreenshotOnly)}
+              className={`p-2 rounded-xl border flex items-center justify-between transition-all font-mono text-xs ${
+                isScreenshotOnly
+                  ? 'bg-[#38bdf8]/15 border-[#38bdf8] text-[#38bdf8] shadow-[0_0_10px_rgba(56,189,248,0.3)]'
+                  : 'bg-[#030407] border-[#1e293b] text-slate-400 hover:text-white'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Camera className="w-4 h-4" />
+                <div className="text-left">
+                  <div className="font-bold">
+                    {isScreenshotOnly ? '📷 เก็บภาพเทรด (Backtest)' : '⚡ บันทึกเทรดจริง (Live)'}
+                  </div>
+                  <div className="text-[9px] opacity-75">
+                    {isScreenshotOnly ? 'ไม่กระทบพอร์ตจริง / แยกสถิติ' : 'คำนวณเข้ายอดพอร์ตจริง'}
+                  </div>
+                </div>
+              </div>
+              <div
+                className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                  isScreenshotOnly
+                    ? 'border-[#38bdf8] bg-[#38bdf8] text-black'
+                    : 'border-[#1e293b] bg-[#0e131f]'
+                }`}
+              >
+                {isScreenshotOnly && <Check className="w-3 h-3 stroke-[3]" />}
+              </div>
+            </button>
+          </div>
+
+          {/* ========================================================================= */}
+          {/* 2. OUTCOME (WIN / LOSE), STATUS (COMPLETED/RUNNING/MISSED), AND TREND ALIGNMENT */}
+          {/* ========================================================================= */}
+          <div className="space-y-2.5 p-3.5 rounded-xl bg-[#030407] border border-[#1e293b]">
+            {/* Outcome (WIN / LOSE) */}
+            <div>
+              <label className="text-[11px] font-mono text-slate-400 block mb-1.5">
+                ผลลัพธ์การเทรด (Outcome):
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOutcome('WIN');
+                    if (tradeStatus === 'MISSED') setTradeStatus('COMPLETED');
+                    if (riskReward === 0) setRiskReward(2.0);
+                  }}
+                  className={`py-2.5 rounded-xl text-xs font-mono font-extrabold border transition-all flex items-center justify-center gap-1.5 ${
+                    outcome === 'WIN' && tradeStatus !== 'MISSED'
+                      ? 'bg-blue-600 text-white border-blue-500 shadow-[0_0_12px_rgba(37,99,235,0.5)]'
+                      : 'bg-[#0e131f] text-slate-400 border-[#1e293b] hover:text-white'
+                  }`}
+                >
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  <span>WIN</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOutcome('LOSE');
+                    if (tradeStatus === 'MISSED') setTradeStatus('COMPLETED');
+                    // Suggest 0 RR for loss
+                    setRiskReward(0);
+                  }}
+                  className={`py-2.5 rounded-xl text-xs font-mono font-extrabold border transition-all flex items-center justify-center gap-1.5 ${
+                    outcome === 'LOSE' && tradeStatus !== 'MISSED'
+                      ? 'bg-rose-950 text-rose-200 border-rose-600 shadow-[0_0_12px_rgba(225,29,72,0.4)]'
+                      : 'bg-[#0e131f] text-slate-400 border-[#1e293b] hover:text-white'
+                  }`}
+                >
+                  <X className="w-4 h-4 stroke-[3]" />
+                  <span>LOSE</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Trade Status (Completed / Running / Missed) */}
+            <div>
+              <label className="text-[11px] font-mono text-slate-400 block mb-1.5">
+                สถานะของไม้ (Trade Status):
+              </label>
+              <div className="grid grid-cols-3 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setTradeStatus('COMPLETED')}
+                  className={`py-2 rounded-xl text-xs font-mono font-bold border transition-all flex items-center justify-center gap-1 ${
+                    tradeStatus === 'COMPLETED'
+                      ? 'bg-slate-800 text-slate-200 border-slate-500 shadow-[0_0_8px_rgba(203,213,225,0.2)]'
+                      : 'bg-[#0e131f] text-slate-400 border-[#1e293b] hover:text-white'
+                  }`}
+                >
+                  <span>COMPLETED</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setTradeStatus('RUNNING')}
+                  className={`py-2 rounded-xl text-xs font-mono font-bold border transition-all flex items-center justify-center gap-1 ${
+                    tradeStatus === 'RUNNING'
+                      ? 'bg-[#38bdf8]/20 text-[#38bdf8] border-[#38bdf8] shadow-[0_0_8px_rgba(56,189,248,0.3)]'
+                      : 'bg-[#0e131f] text-slate-400 border-[#1e293b] hover:text-white'
+                  }`}
+                >
+                  <span>RUNNING</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setTradeStatus('MISSED')}
+                  className={`py-2 rounded-xl text-xs font-mono font-bold border transition-all flex items-center justify-center gap-1 ${
+                    tradeStatus === 'MISSED'
+                      ? 'bg-[#f59e0b]/20 text-[#f59e0b] border-[#f59e0b] shadow-[0_0_8px_rgba(245,158,11,0.3)]'
+                      : 'bg-[#0e131f] text-slate-400 border-[#1e293b] hover:text-white'
+                  }`}
+                >
+                  <span>MISSED</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Trend Alignment (ตามเทรนด์ หรือ สวนเทรนด์) */}
+            <div>
+              <label className="text-[11px] font-mono text-slate-400 block mb-1.5">
+                กลยุทธ์ตามเทรนด์ หรือ สวนเทรนด์:
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTrendAlignment('PRO_TREND')}
+                  className={`py-2 rounded-xl text-xs font-mono font-bold border transition-all flex items-center justify-center gap-1.5 ${
+                    trendAlignment === 'PRO_TREND'
+                      ? 'bg-blue-950 text-blue-300 border-blue-600/60 shadow-[0_0_8px_rgba(37,99,235,0.3)]'
+                      : 'bg-[#0e131f] text-slate-400 border-[#1e293b] hover:text-white'
+                  }`}
+                >
+                  <TrendingUp className="w-3.5 h-3.5 text-blue-400" />
+                  <span>ตามเทรนด์ (Pro-Trend)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setTrendAlignment('COUNTER_TREND')}
+                  className={`py-2 rounded-xl text-xs font-mono font-bold border transition-all flex items-center justify-center gap-1.5 ${
+                    trendAlignment === 'COUNTER_TREND'
+                      ? 'bg-rose-950/60 text-rose-300 border-rose-700/60 shadow-[0_0_8px_rgba(225,29,72,0.3)]'
+                      : 'bg-[#0e131f] text-slate-400 border-[#1e293b] hover:text-white'
+                  }`}
+                >
+                  <Compass className="w-3.5 h-3.5 text-rose-400" />
+                  <span>สวนเทรนด์ (Counter-Trend)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* ========================================================================= */}
+          {/* 3. PAIR, TIMEFRAME, AUTO-SESSION, AUTO-DATE/TIME */}
+          {/* ========================================================================= */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            {/* Pair */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-mono text-slate-400">คู่สินทรัพย์:</label>
+                {onOpenManagePairs && (
+                  <button
+                    type="button"
+                    onClick={onOpenManagePairs}
+                    className="text-[10px] font-mono text-slate-300 hover:text-white hover:underline"
+                  >
+                    + จัดการ
+                  </button>
+                )}
+              </div>
+              <select
+                value={pair}
+                onChange={(e) => setPair(e.target.value)}
+                className="w-full bg-[#0e131f] border border-[#1e293b] focus:border-slate-400 rounded-xl px-2.5 py-2 text-xs font-mono text-[#f8fafc] focus:outline-none"
+              >
+                {pairs.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Timeframe with Toggle on/off */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-mono text-slate-400">Timeframe:</label>
+                <button
+                  type="button"
+                  onClick={() => setUseTimeframe(!useTimeframe)}
+                  className={`text-[9px] font-mono px-1.5 py-0.5 rounded transition-all ${
+                    useTimeframe
+                      ? 'bg-blue-950 text-blue-300 border border-blue-600/40 font-bold'
+                      : 'bg-[#0e131f] text-slate-400 border border-[#1e293b]'
+                  }`}
+                  title="เปิด/ปิดการระบุ Timeframe"
+                >
+                  {useTimeframe ? 'เปิดใช้งาน' : 'ไม่ระบุ'}
+                </button>
+              </div>
+              {useTimeframe ? (
+                <select
+                  value={timeframe}
+                  onChange={(e) => setTimeframe(e.target.value)}
+                  className="w-full bg-[#0e131f] border border-[#1e293b] focus:border-slate-400 rounded-xl px-2.5 py-2 text-xs font-mono text-[#f8fafc] focus:outline-none animate-fade-in"
+                >
+                  {TIMEFRAME_PRESETS.map((tf) => (
+                    <option key={tf} value={tf}>
+                      {tf}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div
+                  onClick={() => setUseTimeframe(true)}
+                  className="w-full bg-[#0e131f]/40 border border-dashed border-[#1e293b] hover:border-slate-500 rounded-xl px-2.5 py-2 text-xs font-mono text-slate-500 text-center cursor-pointer transition-colors"
+                  title="คลิกเพื่อเปิดระบุ Timeframe"
+                >
+                  - ปิดไว้ -
+                </div>
+              )}
+            </div>
+
+            {/* Session (Auto-detected) */}
+            <div>
+              <label className="text-[11px] font-mono text-slate-400 block mb-1">
+                Session (อัตโนมัติ):
+              </label>
+              <select
+                value={session}
+                onChange={(e) => setSession(e.target.value)}
+                className="w-full bg-[#0e131f] border border-[#1e293b] focus:border-slate-400 rounded-xl px-2.5 py-2 text-xs font-mono text-[#f8fafc] focus:outline-none"
+              >
+                <option value="Asia (06:00-14:00)">Asia (06:00-14:00)</option>
+                <option value="London (14:00-19:00)">London (14:00-19:00)</option>
+                <option value="NY Overlap (19:00-22:00)">NY Overlap (19:00-22:00)</option>
+                <option value="New York (19:00-03:00)">New York (19:00-03:00)</option>
+                <option value="Off-Session (นอกเวลา)">Off-Session (นอกเวลา)</option>
+              </select>
+            </div>
+
+            {/* Date & Time with Auto-Sync Button */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-mono text-slate-400">วันเวลา (Auto):</label>
+                <button
+                  type="button"
+                  onClick={handleSyncCurrentTimeAndSession}
+                  className="text-[9px] font-mono text-slate-300 hover:text-white flex items-center gap-0.5 hover:underline"
+                  title="ซิงค์เวลาและ Session ปัจจุบันอัตโนมัติ"
+                >
+                  <Clock className="w-2.5 h-2.5" />
+                  <span>ซิงค์</span>
+                </button>
+              </div>
+              <input
+                type="datetime-local"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="w-full bg-[#0e131f] border border-[#1e293b] focus:border-slate-400 rounded-xl px-2 py-2 text-xs font-mono text-[#f8fafc] focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* ========================================================================= */}
+          {/* 4. SETUP (COLLAPSIBLE / OFF BY DEFAULT) */}
+          {/* ========================================================================= */}
+          <div className="p-3.5 rounded-xl bg-[#030407] border border-[#1e293b] space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Tag className="w-3.5 h-3.5 text-slate-300" />
+                <span className="text-xs font-mono font-bold text-[#f8fafc]">
+                  ระบุท่าเทรด (Setups)
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                {onOpenManageSetups && (
+                  <button
+                    type="button"
+                    onClick={onOpenManageSetups}
+                    className="text-[10px] font-mono text-slate-300 hover:text-white hover:underline"
+                  >
+                    + จัดการท่าเทรด
+                  </button>
+                )}
+                {/* Toggle on/off */}
+                <button
+                  type="button"
+                  onClick={() => setUseSetup(!useSetup)}
+                  className={`w-10 h-5 flex items-center rounded-full p-0.5 transition-colors ${
+                    useSetup ? 'bg-blue-600' : 'bg-[#0e131f] border border-[#1e293b]'
+                  }`}
+                  title="เปิด/ปิดการบันทึกท่าเทรด"
+                >
+                  <div
+                    className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                      useSetup ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {useSetup && (
+              <div className="space-y-2 animate-fade-in">
+                <select
+                  value={setupType}
+                  onChange={(e) => setSetupType(e.target.value)}
+                  className="w-full bg-[#0e131f] border border-[#1e293b] focus:border-slate-400 rounded-xl px-3 py-2 text-xs font-mono text-[#f8fafc] focus:outline-none"
+                >
+                  {safeSetups.map((s) => (
+                    <option key={s.id || s.name} value={s.name}>
+                      {s.name} {s.enabled === false ? '(ปิดใช้งาน)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          {/* ========================================================================= */}
+          {/* 5. RISK REWARD & DISTANCE TP/SL (POINTS) + FIBO TARGET BUTTONS */}
+          {/* ========================================================================= */}
+          <div className="p-3.5 rounded-xl bg-[#030407] border border-[#1e293b] space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="w-4 h-4 text-slate-300" />
+                <div>
+                  <span className="text-xs font-mono font-bold text-[#f8fafc] block">
+                    สัดส่วน Risk : Reward (RR)
+                  </span>
+                  <span className="text-[10px] font-mono text-slate-400">
+                    สามารถใส่ <strong className="text-slate-300">1:0</strong> ได้ในกรณีที่เทรดแพ้/ชน SL
+                  </span>
+                </div>
+              </div>
+
+              {/* RR Input */}
+              <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                <span className="text-xs font-mono text-slate-400">1 :</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="500"
+                  step="0.1"
+                  value={riskReward}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    setRiskReward(isNaN(val) ? 0 : Math.min(500, Math.max(0, val)));
+                  }}
+                  className="w-20 bg-[#0e131f] border border-slate-600 focus:border-slate-300 rounded-lg px-2 py-1 text-sm font-mono font-extrabold text-white text-center focus:outline-none"
+                />
+                <span className="text-xs font-mono font-bold text-slate-300">RR</span>
+              </div>
+            </div>
+
+            {/* TP / SL in Points with Fibo Buttons (TP1 / TP2 / TP3) */}
+            <div className="p-3 rounded-xl bg-[#0e131f] border border-[#1e293b] space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-mono text-slate-400 flex items-center gap-1">
+                  <Target className="w-3.5 h-3.5 text-blue-400" />
+                  <span>ระบุระยะจุด & Fibo Targets (กี่จุด):</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setUsePoints(!usePoints)}
+                  className={`w-9 h-4.5 flex items-center rounded-full p-0.5 transition-colors ${
+                    usePoints ? 'bg-blue-600' : 'bg-[#030407] border border-[#1e293b]'
+                  }`}
+                  title="เปิด/ปิดการคำนวณระยะจุด"
+                >
+                  <div
+                    className={`bg-white w-3.5 h-3.5 rounded-full shadow-md transform transition-transform ${
+                      usePoints ? 'translate-x-4.5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {usePoints && (
+                <div className="space-y-2 animate-fade-in">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] font-mono text-slate-300 block mb-0.5">
+                        ระยะ SL (จุด):
+                      </label>
+                      <input
+                        type="number"
+                        value={slPoints}
+                        onChange={(e) => setSlPoints(e.target.value)}
+                        placeholder="100 จุด"
+                        className="w-full bg-[#030407] border border-[#1e293b] focus:border-slate-400 rounded-xl px-2.5 py-1.5 text-xs font-mono text-slate-200 font-bold focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-mono text-blue-400 block mb-0.5">
+                        ระยะ TP (จุด):
+                      </label>
+                      <input
+                        type="number"
+                        value={tpPoints}
+                        onChange={(e) => setTpPoints(e.target.value)}
+                        placeholder="200 จุด"
+                        className="w-full bg-[#030407] border border-[#1e293b] focus:border-slate-400 rounded-xl px-2.5 py-1.5 text-xs font-mono text-blue-400 font-bold focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Fibo Target Selection Tag */}
+                  <div>
+                    <div className="text-[10px] font-mono text-slate-400 mb-1">
+                      เป้าหมาย Fibonacci TP:
+                    </div>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectFibo('TP1')}
+                        className={`py-1.5 rounded-lg text-[10px] font-mono font-bold border transition-all ${
+                          fiboTpLevel === 'TP1'
+                            ? 'bg-slate-700 text-white border-slate-400 shadow-[0_0_8px_rgba(203,213,225,0.25)]'
+                            : 'bg-[#030407] text-slate-400 border-[#1e293b] hover:text-white'
+                        }`}
+                      >
+                        TP1
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSelectFibo('TP2')}
+                        className={`py-1.5 rounded-lg text-[10px] font-mono font-bold border transition-all ${
+                          fiboTpLevel === 'TP2'
+                            ? 'bg-slate-700 text-white border-slate-400 shadow-[0_0_8px_rgba(203,213,225,0.25)]'
+                            : 'bg-[#030407] text-slate-400 border-[#1e293b] hover:text-white'
+                        }`}
+                      >
+                        TP2
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSelectFibo('TP3')}
+                        className={`py-1.5 rounded-lg text-[10px] font-mono font-bold border transition-all ${
+                          fiboTpLevel === 'TP3'
+                            ? 'bg-slate-700 text-white border-slate-400 shadow-[0_0_8px_rgba(203,213,225,0.25)]'
+                            : 'bg-[#030407] text-slate-400 border-[#1e293b] hover:text-white'
+                        }`}
+                      >
+                        TP3
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* PnL ($) */}
+            <div className="pt-1">
+              <label className="text-[11px] font-mono text-slate-400 block mb-1">
+                กำไร / ขาดทุนสุทธิ ($ PnL):
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-2.5 text-xs font-mono text-slate-400">$</span>
+                <input
+                  type="number"
+                  step="any"
+                  value={pnl}
+                  onChange={(e) => setPnl(e.target.value)}
+                  placeholder="เช่น 500"
+                  className="w-full bg-[#0e131f] border border-[#1e293b] focus:border-slate-400 rounded-xl pl-7 pr-3 py-2 text-sm font-mono font-bold text-[#f8fafc] focus:outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* ========================================================================= */}
+          {/* 8. NOTES & CHART SCREENSHOTS */}
+          {/* ========================================================================= */}
+          <div className="space-y-3">
+            {/* Notes */}
+            <div>
+              <label className="text-[11px] font-mono text-slate-400 block mb-1">
+                บันทึกเหตุผลและข้อคิด (Notes):
+              </label>
+              <textarea
+                rows={2}
+                placeholder="เช่น เบรกแนวต้านแล้วย่อสวย, ข่าวกระทบนิดหน่อย, คุมความเสี่ยงได้ตามแผน..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="w-full bg-[#0e131f] border border-[#1e293b] focus:border-slate-400 rounded-xl px-3 py-2 text-xs font-mono text-[#f8fafc] focus:outline-none placeholder-slate-500 resize-none"
+              />
+            </div>
+
+            {/* Screenshots */}
+            <div>
+              <label className="text-[11px] font-mono text-slate-400 block mb-1">
+                ลิงก์ภาพกราฟวิเคราะห์ (Chart Screenshot URL):
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  placeholder="https://www.tradingview.com/x/... หรือ URL รูปภาพ"
+                  value={imageUrlInput}
+                  onChange={(e) => setImageUrlInput(e.target.value)}
+                  className="flex-1 bg-[#0e131f] border border-[#1e293b] focus:border-slate-400 rounded-xl px-3 py-2 text-xs font-mono text-[#f8fafc] focus:outline-none placeholder-slate-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddScreenshot}
+                  className="px-3.5 py-2 bg-[#0e131f] hover:bg-[#1e293b] text-[#f8fafc] text-xs font-mono rounded-xl border border-[#1e293b]"
+                >
+                  + ใส่รูป
+                </button>
+              </div>
+
+              {/* Thumbnails */}
+              {screenshots.length > 0 && (
+                <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
+                  {screenshots.map((url, idx) => (
+                    <div
+                      key={idx}
+                      className="relative w-20 h-14 rounded-lg overflow-hidden border border-[#1e293b] bg-[#030407] shrink-0 group"
+                    >
+                      <img
+                        src={url}
+                        alt="Chart"
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveScreenshot(idx)}
+                        className="absolute top-1 right-1 p-0.5 bg-black/80 hover:bg-slate-700 rounded text-white opacity-80 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ========================================================================= */}
+          {/* 9. SUBMIT BUTTON */}
+          {/* ========================================================================= */}
+          <div className="pt-3 border-t border-[#1e293b] flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2.5 bg-[#0e131f] hover:bg-[#1e293b] text-xs font-mono text-slate-400 hover:text-white rounded-xl border border-[#1e293b]"
+            >
+              ยกเลิก
+            </button>
+            <button
+              type="submit"
+              className="px-6 py-2.5 bg-gradient-to-r from-slate-100 via-slate-300 to-slate-200 hover:from-white hover:to-slate-300 text-black text-xs font-mono font-extrabold rounded-xl shadow-[0_0_15px_rgba(255,255,255,0.25)] flex items-center gap-1.5 transition-all transform hover:scale-[1.02] active:scale-[0.98] border border-white"
+            >
+              <Check className="w-4 h-4 stroke-[3]" />
+              <span>{activeTrade ? 'บันทึกการแก้ไข' : '⚡ บันทึกไม้เทรด (Save Trade)'}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};

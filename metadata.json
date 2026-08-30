@@ -1,0 +1,6 @@
+{
+  "name": "Gengar - Wyk Labs (Data)",
+  "description": "High-Performance Institutional Trading Terminal, Edge Analytics & Performance Certification Engine with Stainless Steel Theme",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

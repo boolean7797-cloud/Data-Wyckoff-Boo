@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      (function () {
+        // Intercept and silence benign Vite HMR / WebSocket development logs
+        function isViteHmrError(target) {
+          if (!target) return false;
+          var text = typeof target === 'string' ? target : (target.message || target.stack || String(target));
+          return (
+            text.indexOf('[vite]') !== -1 ||
+            text.indexOf('WebSocket closed without opened') !== -1 ||
+            text.indexOf('failed to connect to websocket') !== -1
+          );
+        }
+
+        var origError = console.error;
+        console.error = function () {
+          for (var i = 0; i < arguments.length; i++) {
+            if (isViteHmrError(arguments[i])) return;
+          }
+          origError.apply(console, arguments);
+        };
+
+        var origWarn = console.warn;
+        console.warn = function () {
+          for (var i = 0; i < arguments.length; i++) {
+            if (isViteHmrError(arguments[i])) return;
+          }
+          origWarn.apply(console, arguments);
+        };
+
+        var origDebug = console.debug;
+        console.debug = function () {
+          for (var i = 0; i < arguments.length; i++) {
+            if (isViteHmrError(arguments[i])) return;
+          }
+          origDebug.apply(console, arguments);
+        };
+
+        window.addEventListener(
+          'error',
+          function (e) {
+            if (isViteHmrError(e.message) || isViteHmrError(e.error)) {
+              e.preventDefault();
+              e.stopImmediatePropagation();
+            }
+          },
+          true
+        );
+
+        window.addEventListener(
+          'unhandledrejection',
+          function (e) {
+            if (isViteHmrError(e.reason)) {
+              e.preventDefault();
+              e.stopImmediatePropagation();
+            }
+          },
+          true
+        );
+      })();
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gengar - Wyk Labs (Data) | Institutional Trading Terminal</title>
+    <meta name="description" content="Gengar - Wyk Labs (Data) - Institutional Trading Terminal, Edge Analytics & Performance Certification Engine" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800;900&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <meta property="og:title" content="Gengar - Wyk Labs (Data)" />
+    <meta property="og:description" content="Gengar - Wyk Labs (Data) - Institutional Trading Terminal, Edge Analytics & Performance Certification Engine" />
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+  </head>
+  <body class="bg-[#030407] text-[#f8fafc] antialiased selection:bg-slate-400/40 selection:text-white">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
