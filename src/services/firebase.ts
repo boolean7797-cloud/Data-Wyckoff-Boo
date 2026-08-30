@@ -60,17 +60,21 @@ export function formatAuthError(error: any): string {
   if (!error) return 'เกิดข้อผิดพลาดไม่ทราบสาเหตุ';
   const code = error.code || '';
   switch (code) {
+    case 'auth/unauthorized-domain':
+      return 'โดเมนของเว็บนี้ยังไม่ได้เพิ่มใน Firebase Authorized Domains สำหรับ Google Popup — แนะนำให้ใช้ "เข้าสู่ระบบหรือสมัครด้วยอีเมลและรหัสผ่าน" ซึ่งพร้อมใช้งานและซิงค์ Cloud ได้ทันทีบนทุกอุปกรณ์';
+    case 'auth/operation-not-allowed':
+      return 'รูปแบบการเข้าสู่ระบบนี้ยังไม่เปิดใช้งานใน Firebase';
     case 'auth/invalid-email':
-      return 'รูปแบบอีเมลไม่ถูกต้อง';
+      return 'รูปแบบอีเมลไม่ถูกต้อง กรุณาตรวจสอบอีเมลอีกครั้ง';
     case 'auth/user-disabled':
       return 'บัญชีนี้ถูกระงับการใช้งาน';
     case 'auth/user-not-found':
-      return 'ไม่พบบัญชีผู้ใช้นี้ในระบบ กรุณาตรวจสอบอีเมลหรือลงทะเบียนใหม่';
+      return 'ไม่พบบัญชีผู้ใช้นี้ในระบบ กรุณาตรวจสอบอีเมลหรือกด "สมัครด้วยอีเมล"';
     case 'auth/wrong-password':
     case 'auth/invalid-credential':
-      return 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+      return 'อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง';
     case 'auth/email-already-in-use':
-      return 'อีเมลนี้ถูกใช้งานแล้ว กรุณาเข้าสู่ระบบ หรือใช้อีเมลอื่น';
+      return 'อีเมลนี้มีในระบบแล้ว กรุณาเลือกแท็บ "เข้าสู่ระบบ" หรือใช้อีเมลอื่น';
     case 'auth/weak-password':
       return 'รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร';
     case 'auth/popup-closed-by-user':
