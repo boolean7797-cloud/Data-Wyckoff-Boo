@@ -78,6 +78,7 @@ export interface ScaleInEntry {
   outcome?: 'WIN' | 'LOSE' | 'BE' | 'RUNNING'; // ผลลัพธ์ไม้เสริม
   lossReason?: string; // เหตุผลที่แพ้ของไม้นี้ (Invalidation Reason)
   invalidationReason?: string;
+  screenshots?: string[]; // รูปภาพกราฟ / สลิปของไม้เติมนี้
   notes?: string; // ข้อคิด / โซนที่เติมไม้
 }
 

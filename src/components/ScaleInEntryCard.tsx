@@ -24,6 +24,7 @@ import {
   SetupItem,
 } from '../types';
 import { TIMEFRAME_PRESETS } from '../data/mockData';
+import { OrderImageUploader } from './OrderImageUploader';
 
 interface ScaleInEntryCardProps {
   entry: ScaleInEntry;
@@ -973,19 +974,33 @@ export const ScaleInEntryCard: React.FC<ScaleInEntryCardProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* 5. NOTES FOR THIS SPECIFIC SCALE-IN ORDER */}
+      {/* 5. NOTES & ORDER IMAGES FOR THIS SPECIFIC SCALE-IN ORDER */}
       {/* ========================================================================= */}
-      <div className="p-3.5 rounded-xl bg-[#030407] border border-[#1e293b] space-y-1.5">
-        <label className="text-[11px] font-mono text-slate-300 block font-bold">
-          บันทึกเหตุผลและข้อคิดของไม้ที่ {orderNum} (Notes):
-        </label>
-        <textarea
-          rows={2}
-          placeholder="ระบุเหตุผลหรือข้อคิดที่เข้าไม้เติมนี้ เช่น เติมเพราะทะลุสวิงเดิม ขยับ SL บังทุนแล้ว..."
-          value={entry.notes || ''}
-          onChange={(e) => onUpdate('notes', e.target.value)}
-          className="w-full bg-[#0e131f] border border-[#1e293b] focus:border-slate-400 rounded-xl p-2.5 text-xs font-mono text-[#f8fafc] focus:outline-none placeholder-slate-600 resize-none"
-        />
+      <div className="p-3.5 rounded-xl bg-[#030407] border border-[#1e293b] space-y-3">
+        <div className="space-y-1.5">
+          <label className="text-[11px] font-mono text-slate-300 block font-bold">
+            บันทึกเหตุผลและข้อคิดของไม้ที่ {orderNum} (Notes):
+          </label>
+          <textarea
+            rows={2}
+            placeholder="ระบุเหตุผลหรือข้อคิดที่เข้าไม้เติมนี้ เช่น เติมเพราะทะลุสวิงเดิม ขยับ SL บังทุนแล้ว..."
+            value={entry.notes || ''}
+            onChange={(e) => onUpdate('notes', e.target.value)}
+            className="w-full bg-[#0e131f] border border-[#1e293b] focus:border-slate-400 rounded-xl p-2.5 text-xs font-mono text-[#f8fafc] focus:outline-none placeholder-slate-600 resize-none"
+          />
+        </div>
+
+        {/* Scale-in Order Screenshot / Slip Uploader */}
+        <div>
+          <OrderImageUploader
+            images={entry.screenshots || []}
+            onChange={(imgs) => onUpdate('screenshots', imgs)}
+            label={`รูปภาพกราฟ / สลิปของไม้ที่ ${orderNum} (Scale-in Screenshots)`}
+            subLabel="อัปโหลดภาพเฉพาะไม้เติมนี้, ลากวางไฟล์ หรือกด Ctrl+V"
+            maxImages={4}
+            compact
+          />
+        </div>
       </div>
     </div>
   );

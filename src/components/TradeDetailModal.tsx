@@ -456,6 +456,31 @@ export const TradeDetailModal: React.FC<TradeDetailModalProps> = ({
                             {entry.notes}
                           </div>
                         )}
+
+                        {/* Scale-in Screenshots if present */}
+                        {entry.screenshots && entry.screenshots.length > 0 && (
+                          <div className="pt-1">
+                            <div className="text-[10px] font-mono text-slate-400 font-bold mb-1">
+                              ภาพไม้เติม #{entry.orderNumber || idx + 1}:
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                              {entry.screenshots.map((sImg, sIdx) => (
+                                <div
+                                  key={sIdx}
+                                  className="relative aspect-video rounded-lg overflow-hidden border border-[#1e293b] bg-[#030407] group"
+                                >
+                                  <img
+                                    src={sImg}
+                                    alt={`ScaleIn ${entry.orderNumber || idx + 1} shot ${sIdx + 1}`}
+                                    className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                                    onClick={() => setSelectedImage(sImg)}
+                                    referrerPolicy="no-referrer"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
