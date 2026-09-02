@@ -8,24 +8,19 @@ import {
   UserPlus,
   LogIn,
   AlertTriangle,
-  Mail,
-  Lock,
   Cloud,
   ShieldCheck,
   LogOut,
   RefreshCw,
   Sparkles,
-  KeyRound,
+  RotateCcw,
   Laptop,
   Smartphone,
 } from 'lucide-react';
 import { User } from '../types';
 import {
-  loginWithEmail,
-  registerWithEmail,
   loginWithGoogle,
   logoutFirebase,
-  sendResetPassword,
   formatAuthError,
 } from '../services/firebase';
 
@@ -37,6 +32,7 @@ interface AuthModalProps {
   onLogin: (user: User) => void;
   onRegister: (newUser: User) => void;
   onDeleteUser: (userId: string) => void;
+  onResetAllToZero?: () => void;
   onCloudSyncSuccess?: () => void;
 }
 
@@ -48,90 +44,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onLogin,
   onRegister,
   onDeleteUser,
-  onCloudSyncSuccess,
+  onResetAllToZero,
 }) => {
   const safeUsers = Array.isArray(allUsers) ? allUsers : [];
-  const [authMode, setAuthMode] = useState<'signin' | 'signup' | 'profiles'>('signin');
+  const [authMode, setAuthMode] = useState<'google' | 'newProfile' | 'profiles'>('google');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
-  // Form states for Email Auth
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  // Form states for New Local Profile
   const [displayName, setDisplayName] = useState('');
-  const [tradingTitle, setTradingTitle] = useState('Ghost Trader');
-  const [initialBalance, setInitialBalance] = useState('50000');
-  const [initialFundedBalance, setInitialFundedBalance] = useState('100000');
+  const [tradingTitle, setTradingTitle] = useState('Trader');
+  const [initialBalance, setInitialBalance] = useState('0');
+  const [initialFundedBalance, setInitialFundedBalance] = useState('0');
 
   // Status & Feedback states
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [isResetPasswordMode, setIsResetPasswordMode] = useState(false);
 
   if (!isOpen) return null;
-
-  // Handle Email Sign In
-  const handleEmailSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim() || !password.trim()) {
-      setErrorMessage('กรุณากรอกอีเมลและรหัสผ่าน');
-      return;
-    }
-
-    setIsLoading(true);
-    setErrorMessage(null);
-    setSuccessMessage(null);
-
-    try {
-      const user = await loginWithEmail(email.trim(), password);
-      onLogin(user);
-      setSuccessMessage('เข้าสู่ระบบและซิงค์ข้อมูลคลาวด์เรียบร้อยแล้ว!');
-      setTimeout(() => {
-        onClose();
-      }, 1000);
-    } catch (err: any) {
-      setErrorMessage(formatAuthError(err));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Handle Email Sign Up
-  const handleEmailSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim() || !password.trim()) {
-      setErrorMessage('กรุณากรอกอีเมลและรหัสผ่าน');
-      return;
-    }
-    if (password.length < 6) {
-      setErrorMessage('รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร');
-      return;
-    }
-
-    setIsLoading(true);
-    setErrorMessage(null);
-    setSuccessMessage(null);
-
-    try {
-      const { user } = await registerWithEmail(
-        email.trim(),
-        password,
-        displayName.trim() || email.split('@')[0],
-        tradingTitle.trim() || 'Ghost Trader',
-        parseFloat(initialBalance) || 50000,
-        parseFloat(initialFundedBalance) || 100000
-      );
-      onRegister(user);
-      setSuccessMessage('สร้างบัญชีและเชื่อมต่อ Cloud Firestore สำเร็จ!');
-      setTimeout(() => {
-        onClose();
-      }, 1000);
-    } catch (err: any) {
-      setErrorMessage(formatAuthError(err));
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   // Handle Google Sign In
   const handleGoogleSignIn = async () => {
@@ -142,7 +73,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     try {
       const user = await loginWithGoogle();
       onLogin(user);
-      setSuccessMessage('เข้าสู่ระบบด้วย Google สำเร็จ!');
+      setSuccessMessage('เข้าสู่ระบบด้วย Google และเชื่อมต่อ Cloud Firestore สำเร็จ!');
       setTimeout(() => {
         onClose();
       }, 1000);
@@ -153,27 +84,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
-  // Handle Password Reset
-  const handleResetPassword = async (e: React.FormEvent) => {
+  // Handle Create Local Profile
+  const handleCreateLocalProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) {
-      setErrorMessage('กรุณากรอกอีเมลที่ต้องการรีเซ็ตรหัสผ่าน');
-      return;
-    }
+    const name = displayName.trim() || 'Trader';
+    const newId = `user_${Date.now()}`;
+    const newUser: User = {
+      id: newId,
+      username: name.toLowerCase().replace(/\s+/g, '_'),
+      displayName: name,
+      title: tradingTitle.trim() || 'Trader',
+      accountBalance: parseFloat(initialBalance) || 0,
+      fundedBalance: parseFloat(initialFundedBalance) || 0,
+      createdAt: new Date().toISOString(),
+    };
 
-    setIsLoading(true);
-    setErrorMessage(null);
-    setSuccessMessage(null);
-
-    try {
-      await sendResetPassword(email.trim());
-      setSuccessMessage(`ส่งลิงก์ตั้งรหัสผ่านใหม่ไปยัง ${email.trim()} เรียบร้อยแล้ว`);
-      setIsResetPasswordMode(false);
-    } catch (err: any) {
-      setErrorMessage(formatAuthError(err));
-    } finally {
-      setIsLoading(false);
-    }
+    onRegister(newUser);
+    setSuccessMessage(`สร้างโปรไฟล์ "${name}" สำเร็จและพร้อมใช้งาน!`);
+    setDisplayName('');
+    setTimeout(() => {
+      onClose();
+    }, 800);
   };
 
   // Handle Sign Out
@@ -192,13 +123,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
+  // Handle Factory Clean / Reset to 0
+  const handleExecuteResetToZero = () => {
+    if (onResetAllToZero) {
+      onResetAllToZero();
+      setSuccessMessage('รีเซ็ตข้อมูลทั้งหมดให้เป็น 0 (Clean Slate) เรียบร้อยแล้ว!');
+      setShowResetConfirm(false);
+      setTimeout(() => {
+        onClose();
+      }, 1000);
+    }
+  };
+
   const getInitials = (name: string) => {
-    if (!name || typeof name !== 'string') return 'GP';
+    if (!name || typeof name !== 'string') return 'TR';
     const parts = name.trim().split(/\s+/).filter(Boolean);
     if (parts.length >= 2 && parts[0]?.[0] && parts[1]?.[0]) {
       return (parts[0][0] + parts[1][0]).toUpperCase();
     }
-    return name.trim().slice(0, 2).toUpperCase() || 'GP';
+    return name.trim().slice(0, 2).toUpperCase() || 'TR';
   };
 
   return (
@@ -214,14 +157,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
             <div>
               <h3 className="text-sm sm:text-base font-extrabold text-[#f8fafc] flex items-center gap-2">
-                <span>บัญชีเทรดเดอร์ & Cloud Sync</span>
+                <span>บัญชีเทรดเดอร์ & การจัดการ</span>
                 <span className="px-2 py-0.5 text-[9px] font-mono font-bold bg-blue-950 text-blue-300 border border-blue-800 rounded-full flex items-center gap-1">
                   <Cloud className="w-2.5 h-2.5 text-blue-400" />
-                  <span>Multi-Device</span>
+                  <span>Cloud Sync</span>
                 </span>
               </h3>
               <p className="text-[11px] text-slate-400 font-mono">
-                ล็อกอินด้วยอีเมลเพื่อบันทึกและสลับเครื่องได้ตลอดเวลา
+                เข้าสู่ระบบด้วย Google หรือสร้างโปรไฟล์ใช้งานในเครื่อง
               </p>
             </div>
           </div>
@@ -233,53 +176,40 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </button>
         </div>
 
-        {/* Sync Benefits Callout */}
-        <div className="p-3 rounded-2xl bg-[#030407] border border-blue-900/30 flex items-start gap-2.5 text-[11px] font-mono text-slate-300">
-          <ShieldCheck className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-          <div>
-            <div className="text-blue-300 font-bold">ข้อมูลปลอดภัย ผูกติดกับบัญชีอีเมลของคุณ:</div>
-            <p className="text-slate-400 text-[10px] leading-relaxed mt-0.5">
-              ประวัติไม้เทรด, ภาพกราฟ, พอร์ตกองทุน, การตั้งค่า R:R และสถิติทั้งหมดจะถูกบันทึกบน Cloud Firestore อัตโนมัติ สลับใช้อุปกรณ์ไหนก็ยังอยู่ครบ
-            </p>
-          </div>
-        </div>
-
         {/* Tab Navigation */}
         <div className="flex bg-[#030407] p-1 rounded-2xl border border-[#1e293b]">
           <button
             type="button"
             onClick={() => {
-              setAuthMode('signin');
+              setAuthMode('google');
               setErrorMessage(null);
               setSuccessMessage(null);
-              setIsResetPasswordMode(false);
             }}
             className={`flex-1 py-2 rounded-xl text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 ${
-              authMode === 'signin'
+              authMode === 'google'
                 ? 'bg-gradient-to-r from-slate-200 to-slate-300 text-black shadow-[0_0_8px_rgba(255,255,255,0.3)]'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            <LogIn className="w-3.5 h-3.5" />
-            <span>เข้าสู่ระบบ</span>
+            <Cloud className="w-3.5 h-3.5" />
+            <span>Google Login</span>
           </button>
 
           <button
             type="button"
             onClick={() => {
-              setAuthMode('signup');
+              setAuthMode('newProfile');
               setErrorMessage(null);
               setSuccessMessage(null);
-              setIsResetPasswordMode(false);
             }}
             className={`flex-1 py-2 rounded-xl text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 ${
-              authMode === 'signup'
+              authMode === 'newProfile'
                 ? 'bg-gradient-to-r from-slate-200 to-slate-300 text-black shadow-[0_0_8px_rgba(255,255,255,0.3)]'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
             <UserPlus className="w-3.5 h-3.5" />
-            <span>สมัครด้วยอีเมล</span>
+            <span>+ โปรไฟล์ใหม่</span>
           </button>
 
           <button
@@ -288,7 +218,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               setAuthMode('profiles');
               setErrorMessage(null);
               setSuccessMessage(null);
-              setIsResetPasswordMode(false);
             }}
             className={`flex-1 py-2 rounded-xl text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 ${
               authMode === 'profiles'
@@ -316,200 +245,108 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
         )}
 
-        {/* 1. SIGN IN TAB */}
-        {authMode === 'signin' && (
+        {/* 1. GOOGLE LOGIN TAB */}
+        {authMode === 'google' && (
           <div className="space-y-3.5 animate-fade-in">
-            {!isResetPasswordMode ? (
-              <form onSubmit={handleEmailSignIn} className="space-y-3">
-                <div>
-                  <label className="text-[11px] font-mono text-slate-300 block mb-1">
-                    อีเมล (Email Address): *
-                  </label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="email"
-                      required
-                      placeholder="เช่น trader@example.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full bg-[#0e131f] border border-[#1e293b] focus:border-slate-400 rounded-xl pl-9 pr-3 py-2 text-xs font-mono text-[#f8fafc] focus:outline-none placeholder-slate-500"
-                    />
-                  </div>
-                </div>
+            <div className="p-4 rounded-2xl bg-[#0a0f1c] border border-blue-900/40 text-center space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 mx-auto flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <Cloud className="w-6 h-6 text-white" />
+              </div>
 
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[11px] font-mono text-slate-300">
-                      รหัสผ่าน (Password): *
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setIsResetPasswordMode(true)}
-                      className="text-[10px] font-mono text-blue-400 hover:text-blue-300 underline"
-                    >
-                      ลืมรหัสผ่าน?
-                    </button>
-                  </div>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="password"
-                      required
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-[#0e131f] border border-[#1e293b] focus:border-slate-400 rounded-xl pl-9 pr-3 py-2 text-xs font-mono text-[#f8fafc] focus:outline-none placeholder-slate-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-2 flex flex-col gap-2">
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full py-2.5 bg-gradient-to-r from-slate-100 via-slate-300 to-slate-200 hover:from-white hover:to-slate-300 text-black text-xs font-mono font-extrabold rounded-xl shadow-[0_0_12px_rgba(255,255,255,0.2)] border border-white transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    {isLoading ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                        <span>กำลังเข้าสู่ระบบ...</span>
-                      </>
-                    ) : (
-                      <>
-                        <LogIn className="w-4 h-4 stroke-[2.5]" />
-                        <span>เข้าสู่ระบบด้วยอีเมล (Email Sign In)</span>
-                      </>
-                    )}
-                  </button>
-
-                  <div className="p-3 rounded-xl bg-[#090e1a] border border-blue-900/40 text-[11px] font-mono text-slate-300 space-y-1.5 mt-1">
-                    <div className="flex items-center gap-1.5 text-blue-300 font-bold">
-                      <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-                      <span>คำแนะนำ: เข้าสู่ระบบและสมัครด้วยอีเมล</span>
-                    </div>
-                    <p className="text-slate-400 text-[10px] leading-relaxed">
-                      การล็อกอินด้วยอีเมลและรหัสผ่าน <strong className="text-slate-200">ไม่ต้องตั้งค่าโดเมน</strong> และพร้อมใช้งานซิงค์ข้อมูล Cloud Firestore ได้ทันทีบนทุกอุปกรณ์ หากยังไม่มีบัญชีสามารถกดแท็บ <button type="button" onClick={() => setAuthMode('signup')} className="text-blue-400 underline font-bold hover:text-blue-300">"สมัครด้วยอีเมล"</button> ด้านบนได้ทันทีครับ
-                    </p>
-                  </div>
-                </div>
-              </form>
-            ) : (
-              <form onSubmit={handleResetPassword} className="space-y-3">
-                <div className="text-xs font-mono text-slate-300 font-bold flex items-center gap-1.5">
-                  <KeyRound className="w-4 h-4 text-blue-400" />
-                  <span>ขอรับลิงก์รีเซ็ตรหัสผ่าน</span>
-                </div>
-                <p className="text-[11px] font-mono text-slate-400">
-                  กรอกอีเมลของคุณเพื่อรับลิงก์ตั้งรหัสผ่านใหม่ทางอีเมล
+              <div>
+                <h4 className="text-sm font-extrabold text-white">เข้าสู่ระบบด้วยบัญชี Google</h4>
+                <p className="text-[11px] text-slate-400 font-mono mt-1">
+                  คลิกเดียวเพื่อซิงค์ประวัติไม้และสถิติทั้งหมดบน Cloud Firestore ปลอดภัยและรวดเร็ว
                 </p>
-                <div>
-                  <label className="text-[11px] font-mono text-slate-300 block mb-1">
-                    อีเมลที่ลงทะเบียนไว้:
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="trader@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-[#0e131f] border border-[#1e293b] focus:border-slate-400 rounded-xl px-3 py-2 text-xs font-mono text-[#f8fafc] focus:outline-none"
-                  />
-                </div>
-                <div className="flex gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsResetPasswordMode(false)}
-                    className="px-3 py-2 rounded-xl bg-[#0e131f] border border-[#1e293b] text-xs font-mono text-slate-400 hover:text-white"
-                  >
-                    ยกเลิก
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-mono font-bold rounded-xl shadow-md"
-                  >
-                    {isLoading ? 'กำลังส่ง...' : 'ส่งอีเมลรีเซ็ตรหัสผ่าน'}
-                  </button>
-                </div>
-              </form>
-            )}
+              </div>
+
+              <button
+                type="button"
+                onClick={handleGoogleSignIn}
+                disabled={isLoading}
+                className="w-full py-3 bg-white hover:bg-slate-100 text-slate-900 font-mono font-extrabold text-xs rounded-xl shadow-lg flex items-center justify-center gap-2.5 transition-all disabled:opacity-50"
+              >
+                {isLoading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin text-slate-900" />
+                    <span>กำลังเชื่อมต่อ Google...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" viewBox="0 0 24 24">
+                      <path
+                        fill="#4285F4"
+                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                      />
+                      <path
+                        fill="#34A853"
+                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                      />
+                      <path
+                        fill="#FBBC05"
+                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                      />
+                      <path
+                        fill="#EA4335"
+                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                      />
+                    </svg>
+                    <span>Sign in with Google</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="p-3 rounded-2xl bg-[#030407] border border-[#1e293b] flex items-start gap-2.5 text-[11px] font-mono text-slate-400">
+              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <div>
+                <span className="text-slate-200 font-bold">ไม่ต้องการล็อกอิน?</span>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  คุณสามารถใช้งานระบบได้ทันทีโดยไม่ต้องล็อกอิน ข้อมูลจะถูกเก็บในเครื่องของคุณอย่างปลอดภัย
+                </p>
+              </div>
+            </div>
           </div>
         )}
 
-        {/* 2. SIGN UP TAB */}
-        {authMode === 'signup' && (
-          <form onSubmit={handleEmailSignUp} className="space-y-3 animate-fade-in">
+        {/* 2. CREATE NEW LOCAL PROFILE */}
+        {authMode === 'newProfile' && (
+          <form onSubmit={handleCreateLocalProfile} className="space-y-3 animate-fade-in">
             <div>
               <label className="text-[11px] font-mono text-slate-300 block mb-1">
-                อีเมล (Email Address): *
+                ชื่อโปรไฟล์เทรดเดอร์ (Trader Name): *
               </label>
-              <div className="relative">
-                <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="email"
-                  required
-                  placeholder="เช่น alex.trader@gmail.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-[#0e131f] border border-[#1e293b] focus:border-slate-400 rounded-xl pl-9 pr-3 py-2 text-xs font-mono text-[#f8fafc] focus:outline-none placeholder-slate-500"
-                />
-              </div>
+              <input
+                type="text"
+                required
+                placeholder="เช่น Trader A, Wyckoff Sniper"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                className="w-full bg-[#0e131f] border border-[#1e293b] focus:border-slate-400 rounded-xl px-3 py-2 text-xs font-mono text-[#f8fafc] focus:outline-none placeholder-slate-500"
+              />
             </div>
 
             <div>
               <label className="text-[11px] font-mono text-slate-300 block mb-1">
-                ตั้งรหัสผ่าน (Password): * (อย่างน้อย 6 ตัวอักษร)
+                สไตล์หรือฉายา (Trading Style / Title):
               </label>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="password"
-                  required
-                  minLength={6}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-[#0e131f] border border-[#1e293b] focus:border-slate-400 rounded-xl pl-9 pr-3 py-2 text-xs font-mono text-[#f8fafc] focus:outline-none placeholder-slate-500"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <div>
-                <label className="text-[11px] font-mono text-slate-300 block mb-1">
-                  ชื่อแสดงผล (Trader Name):
-                </label>
-                <input
-                  type="text"
-                  placeholder="เช่น Alex Wyckoff"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  className="w-full bg-[#0e131f] border border-[#1e293b] focus:border-slate-400 rounded-xl px-3 py-2 text-xs font-mono text-[#f8fafc] focus:outline-none placeholder-slate-500"
-                />
-              </div>
-              <div>
-                <label className="text-[11px] font-mono text-slate-300 block mb-1">
-                  สไตล์เทรด (Title):
-                </label>
-                <input
-                  type="text"
-                  placeholder="เช่น SMC Pro, Swing Sniper"
-                  value={tradingTitle}
-                  onChange={(e) => setTradingTitle(e.target.value)}
-                  className="w-full bg-[#0e131f] border border-[#1e293b] focus:border-slate-400 rounded-xl px-3 py-2 text-xs font-mono text-[#f8fafc] focus:outline-none placeholder-slate-500"
-                />
-              </div>
+              <input
+                type="text"
+                placeholder="เช่น Scalper, SMC Pro, Swing Sniper"
+                value={tradingTitle}
+                onChange={(e) => setTradingTitle(e.target.value)}
+                className="w-full bg-[#0e131f] border border-[#1e293b] focus:border-slate-400 rounded-xl px-3 py-2 text-xs font-mono text-[#f8fafc] focus:outline-none placeholder-slate-500"
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-2.5">
               <div>
                 <label className="text-[11px] font-mono text-slate-300 block mb-1">
-                  พอร์ตส่วนตัว ($):
+                  ทุนพอร์ตส่วนตัวเริ่มต้น ($):
                 </label>
                 <input
                   type="number"
-                  placeholder="50000"
+                  placeholder="0"
                   value={initialBalance}
                   onChange={(e) => setInitialBalance(e.target.value)}
                   className="w-full bg-[#0e131f] border border-[#1e293b] focus:border-slate-400 rounded-xl px-3 py-2 text-xs font-mono text-[#f8fafc] focus:outline-none"
@@ -517,11 +354,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
               <div>
                 <label className="text-[11px] font-mono text-slate-300 block mb-1">
-                  พอร์ตกองทุนเริ่มต้น ($):
+                  ทุนพอร์ตกองทุนเริ่มต้น ($):
                 </label>
                 <input
                   type="number"
-                  placeholder="100000"
+                  placeholder="0"
                   value={initialFundedBalance}
                   onChange={(e) => setInitialFundedBalance(e.target.value)}
                   className="w-full bg-[#0e131f] border border-[#1e293b] focus:border-slate-400 rounded-xl px-3 py-2 text-xs font-mono text-[#f8fafc] focus:outline-none"
@@ -532,20 +369,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <div className="pt-2">
               <button
                 type="submit"
-                disabled={isLoading}
-                className="w-full py-2.5 bg-gradient-to-r from-slate-100 via-slate-300 to-slate-200 hover:from-white hover:to-slate-300 text-black text-xs font-mono font-extrabold rounded-xl shadow-[0_0_12px_rgba(255,255,255,0.2)] border border-white transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-2.5 bg-gradient-to-r from-slate-100 via-slate-300 to-slate-200 hover:from-white hover:to-slate-300 text-black text-xs font-mono font-extrabold rounded-xl shadow-[0_0_12px_rgba(255,255,255,0.2)] border border-white transition-all flex items-center justify-center gap-2"
               >
-                {isLoading ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>กำลังสร้างบัญชีบนคลาวด์...</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 stroke-[2.5]" />
-                    <span>สมัครสมาชิกและเชื่อมต่อ Cloud Sync</span>
-                  </>
-                )}
+                <Plus className="w-4 h-4 stroke-[2.5]" />
+                <span>สร้างโปรไฟล์ใหม่และเริ่มใช้งาน</span>
               </button>
             </div>
           </form>
@@ -577,35 +404,38 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={handleSignOut}
-                    className="px-2.5 py-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 text-[10px] font-mono border border-rose-800 flex items-center gap-1 transition-all"
-                  >
-                    <LogOut className="w-3 h-3" />
-                    <span>ออกจากระบบ</span>
-                  </button>
+                  {currentUser.isFirebaseUser && (
+                    <button
+                      type="button"
+                      onClick={handleSignOut}
+                      className="px-2.5 py-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 text-[10px] font-mono border border-rose-800 flex items-center gap-1 transition-all"
+                    >
+                      <LogOut className="w-3 h-3" />
+                      <span>ออกจากระบบ</span>
+                    </button>
+                  )}
                 </div>
 
                 <div className="pt-1 border-t border-blue-900/40 flex items-center justify-between text-[10px] font-mono text-emerald-400">
                   <span className="flex items-center gap-1">
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>Cloud Firestore Live Sync Active</span>
+                    <span>สถานะ: {currentUser.isFirebaseUser ? 'Google Cloud Sync' : 'Local Storage Mode'}</span>
                   </span>
                   <span className="text-slate-400">
                     {currentUser.lastSyncedAt
-                      ? `ซิงค์ล่าสุด: ${new Date(currentUser.lastSyncedAt).toLocaleTimeString()}`
-                      : 'เชื่อมต่อเรียบร้อย'}
+                      ? `ซิงค์: ${new Date(currentUser.lastSyncedAt).toLocaleTimeString()}`
+                      : 'พร้อมใช้งาน'}
                   </span>
                 </div>
               </div>
             )}
 
-            <div className="text-[11px] font-mono text-slate-400">
-              <span>สลับโปรไฟล์ในเครื่อง หรือ เลือกลบโปรไฟล์:</span>
+            <div className="text-[11px] font-mono text-slate-400 flex items-center justify-between">
+              <span>รายชื่อโปรไฟล์ในเครื่อง:</span>
+              <span>({safeUsers.length} บัญชี)</span>
             </div>
 
-            <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
               {safeUsers.map((user) => {
                 const isCurrent = currentUser?.id === user.id;
                 const isConfirmingThis = confirmDeleteId === user.id;
@@ -640,7 +470,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                           )}
                         </div>
                         <div className="text-[10px] text-slate-400 font-mono truncate">
-                          {user.title} • ${(user.accountBalance || 50000).toLocaleString()}
+                          {user.title} • ${(user.accountBalance || 0).toLocaleString()}
                         </div>
                       </div>
                     </button>
@@ -692,17 +522,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                             </button>
                           )}
 
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setConfirmDeleteId(user.id);
-                            }}
-                            className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-900 rounded-lg transition-colors"
-                            title="ลบโปรไฟล์"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {safeUsers.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setConfirmDeleteId(user.id);
+                              }}
+                              className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-900 rounded-lg transition-colors"
+                              title="ลบโปรไฟล์"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </>
                       )}
                     </div>
@@ -713,14 +545,54 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
         )}
 
+        {/* FACTORY CLEAN / RESET ALL DATA TO 0 SECTION */}
+        <div className="pt-3 border-t border-[#1e293b] space-y-2">
+          {!showResetConfirm ? (
+            <button
+              type="button"
+              onClick={() => setShowResetConfirm(true)}
+              className="w-full py-2 px-3 rounded-xl bg-red-950/40 hover:bg-red-900/60 border border-red-900/60 text-red-300 text-xs font-mono flex items-center justify-center gap-2 transition-all"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-red-400" />
+              <span>รีเซ็ตข้อมูลทั้งหมดให้เป็น 0 (Clean Slate / เหมือนเริ่มใหม่)</span>
+            </button>
+          ) : (
+            <div className="p-3 rounded-2xl bg-red-950/90 border border-red-600 text-center space-y-2 animate-fade-in">
+              <div className="text-xs font-mono font-bold text-red-200 flex items-center justify-center gap-1.5">
+                <AlertTriangle className="w-4 h-4 text-red-400" />
+                <span>ยืนยันการล้างข้อมูลทั้งหมดให้เป็น 0?</span>
+              </div>
+              <p className="text-[11px] text-red-300 font-mono">
+                ประวัติการเทรดทั้งหมด, สถิติ, วิดีโอรีแคป และยอดเงินจะถูกรีเซ็ตกลับเป็น 0 เหมือนเพิ่งเปิดใช้งานครั้งแรก
+              </p>
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowResetConfirm(false)}
+                  className="flex-1 py-1.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-mono hover:bg-slate-700"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExecuteResetToZero}
+                  className="flex-1 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-mono font-bold text-xs shadow-lg shadow-red-900/50"
+                >
+                  ยืนยันรีเซ็ตเป็น 0
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Footer info */}
         <div className="pt-2 border-t border-[#1e293b] flex items-center justify-between text-[10px] font-mono text-slate-500">
           <div className="flex items-center gap-1.5">
             <Laptop className="w-3 h-3 text-slate-400" />
             <Smartphone className="w-3 h-3 text-slate-400" />
-            <span>รองรับคอมพิวเตอร์ แท็บเล็ต และสมาร์ทโฟน</span>
+            <span>รองรับคอมพิวเตอร์และสมาร์ทโฟน</span>
           </div>
-          <span>Gengar Wyk Labs v1.1</span>
+          <span>Gengar Wyk Labs</span>
         </div>
       </div>
     </div>

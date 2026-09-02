@@ -1,7 +1,6 @@
 import { ThemeConfig, User, Trade, SetupItem, FundedAccountConfig } from '../types';
 
-export const DEFAULT_SCREENSHOT =
-  'https://lh3.googleusercontent.com/aida-public/AB6AXuCqisVjqZNNaD3J8-M6tzIKcX5YspZhps1HI2NTUz0NdOPXxee3Vc0h1TOofBRq2v4rDjzENcQRF1KNQk-54pxmZLXri6_WWd1ApI6gK9rfoZ_eQJWalcozwbMkAeBFk97sNCbDyHdrSfAou0mMnXeZ2UrD_pB65QQPWZq0juExKOYJ1CMdC-cnCgajlceVGTAZLjMKeXzQKcYReuK5KVhGMZxaPQij4S0YNJS12Xp1_VWh8OyOp4U_';
+export const DEFAULT_SCREENSHOT = '';
 
 export const DEFAULT_THEME: ThemeConfig = {
   id: 'stainless-steel-black',
@@ -19,22 +18,13 @@ export const DEFAULT_THEME: ThemeConfig = {
 
 export const DEFAULT_USERS: User[] = [
   {
-    id: 'user_alex',
-    username: 'alex',
-    displayName: 'Alex Vance',
-    title: 'Senior Prop Trader',
-    accountBalance: 50000,
-    fundedBalance: 100000,
-    createdAt: '2026-01-15T08:00:00Z',
-  },
-  {
-    id: 'user_elena',
-    username: 'elena',
-    displayName: 'Elena Rostova',
-    title: 'SMC Sniper',
-    accountBalance: 25000,
-    fundedBalance: 50000,
-    createdAt: '2026-02-01T10:00:00Z',
+    id: 'user_default',
+    username: 'trader',
+    displayName: 'Trader',
+    title: 'Trader',
+    accountBalance: 0,
+    fundedBalance: 0,
+    createdAt: new Date().toISOString(),
   },
 ];
 
@@ -116,14 +106,35 @@ export const DEFAULT_INVALIDATION_REASONS: string[] = [
   'สภาพคล่องหลอก (Liquidity Trap / False Breakout)',
 ];
 
+export const DEFAULT_SCALE_IN_TECHNIQUES: string[] = [
+  'Pyramiding (เติมไม้เมื่อกราฟวิ่งถูกทาง / มีกำไรแล้ว)',
+  'Breakout & Pullback Add (เติมตอนเบรกแล้วย่อเทสแนว)',
+  'Retest Key Level / S&R (เติมตอนเทสแนวรับต้านสำคัญ)',
+  'Momentum Re-entry (เติมตามแรงโมเมนตัมต่อเนื่อง)',
+  'Zone DCA / Layering (วางเลเยอร์กระจายออเดอร์ในโซน)',
+  'FVG Rebalance Add (เติมตอนราคาย่อเข้า Fair Value Gap)',
+  'Order Block Confirmation Add (เติมตอนเทส OB แล้วคอนเฟิร์ม)',
+  'Custom / อื่นๆ',
+];
+
+export const DEFAULT_SCALE_IN_LOSS_REASONS: string[] = [
+  'เติมไม้เร็วเกินไป ราคายังไม่ยืนยัน (Added Too Early / No Confirmation)',
+  'ขยับ SL บังทุนไม่ทัน โดนสวิงราคากลืน (Failed to Breakeven / Swept Back)',
+  'เติมไม้ใกล้แนวต้าน/แนวรับสำคัญเกินไป (Added Near Key HTF Resistance)',
+  'Overtrade / อัด Lot ไม้เติมใหญ่เกินความเสี่ยง (Oversized Scale-In Lot)',
+  'กราฟเปลี่ยนทิศทาง / เสียโครงสร้าง (Market Structure Shift / CHoCH)',
+  'ชนข่าวผันผวนรุนแรง (News Spike / High Impact Volatility)',
+  'ฝืนเติมตอนติดไซด์เวย์บีบกรอบ (Added Inside Chop / Consolidation Trap)',
+];
+
 export const DEFAULT_FUNDED_ACCOUNTS: FundedAccountConfig[] = [
   {
-    id: 'funded_ftmo_100k',
-    name: 'FTMO $100,000 Challenge',
-    initialBalance: 100000,
-    maxDailyLossPercent: 5, // 5% = $5,000
-    maxTotalLossPercent: 10, // 10% = $10,000
-    profitTargetPercent: 8, // 8% = $8,000
+    id: 'funded_account_1',
+    name: 'Funded Challenge',
+    initialBalance: 0,
+    maxDailyLossPercent: 5,
+    maxTotalLossPercent: 10,
+    profitTargetPercent: 8,
     phase: 'Phase 1',
   },
 ];
@@ -144,121 +155,9 @@ export const TIMEFRAME_PRESETS = [
   '1D',
 ];
 
-export const DEFAULT_TRADES: Trade[] = [
-  {
-    id: 'trade-1',
-    portfolio: 'personal',
-    pair: 'BTC/USD',
-    direction: 'Long',
-    outcome: 'WIN',
-    tradeStatus: 'COMPLETED',
-    trendAlignment: 'PRO_TREND',
-    isScreenshotOnly: false,
-    setupType: 'Breakout & Retest',
-    setupDescription: 'รอราคาเบรกแนวรับ/แนวต้านสำคัญอย่างรุนแรงด้วยแท่ง Momentum...',
-    session: 'New York',
-    timeframe: '5m',
-    riskReward: 2.5,
-    pnl: 1250,
-    date: '2026-08-08T14:30',
-    screenshots: [DEFAULT_SCREENSHOT],
-    notes: 'Clean break above the key resistance level with high delta volume. Followed plan strictly.',
-    emotion: '🎯 มีวินัย / ตามแผน (Disciplined)',
-    tpPoints: 250,
-    slPoints: 100,
-    fiboTpLevel: 'TP2',
-  },
-  {
-    id: 'trade-2',
-    portfolio: 'personal',
-    pair: 'XAU/USD',
-    direction: 'Short',
-    outcome: 'LOSE',
-    tradeStatus: 'COMPLETED',
-    trendAlignment: 'COUNTER_TREND',
-    isScreenshotOnly: false,
-    invalidationReason: 'หลุดโครงสร้างราคา (Broken Market Structure / CHoCH)',
-    setupType: 'Order Block',
-    session: 'London',
-    timeframe: '15m',
-    riskReward: 3.0,
-    pnl: -500,
-    date: '2026-08-07T08:15',
-    screenshots: [DEFAULT_SCREENSHOT],
-    notes: 'London liquidity raid into 15m supply zone, stopped out cleanly as risk defined.',
-    emotion: '🎯 มีวินัย / ตามแผน (Disciplined)',
-    tpPoints: 150,
-    slPoints: 50,
-  },
-  {
-    id: 'trade-3',
-    portfolio: 'funded',
-    pair: 'EUR/USD',
-    direction: 'Long',
-    outcome: 'WIN',
-    tradeStatus: 'COMPLETED',
-    trendAlignment: 'PRO_TREND',
-    isScreenshotOnly: false,
-    setupType: 'Liquidity Sweep',
-    session: 'London',
-    timeframe: '5m',
-    riskReward: 4.0,
-    pnl: 2000,
-    date: '2026-08-06T09:45',
-    screenshots: [DEFAULT_SCREENSHOT],
-    notes: 'Asian Lows swept right at London open. Strong impulse reversal with bullish engulfing.',
-    emotion: '😌 ผ่อนคลาย / มั่นใจ (Calm / Confident)',
-    tpPoints: 400,
-    slPoints: 100,
-    fiboTpLevel: 'TP3',
-  },
-  {
-    id: 'trade-4',
-    portfolio: 'personal',
-    pair: 'SOL/USD',
-    direction: 'Long',
-    outcome: 'WIN',
-    tradeStatus: 'COMPLETED',
-    trendAlignment: 'PRO_TREND',
-    isScreenshotOnly: true, // Case study / Backtest
-    setupType: 'Breakout & Retest',
-    session: 'New York',
-    timeframe: '1m',
-    riskReward: 3.5,
-    pnl: 1750,
-    date: '2026-08-05T16:20',
-    screenshots: [DEFAULT_SCREENSHOT],
-    notes: 'High-speed 1m momentum break during market open. Backtest case study.',
-    emotion: '🎯 มีวินัย / ตามแผน (Disciplined)',
-    tpPoints: 350,
-    slPoints: 100,
-    fiboTpLevel: 'TP2',
-  },
-  {
-    id: 'trade-5',
-    portfolio: 'funded',
-    pair: 'XAU/USD',
-    direction: 'Long',
-    outcome: 'WIN',
-    tradeStatus: 'RUNNING', // Still running
-    trendAlignment: 'PRO_TREND',
-    isScreenshotOnly: false,
-    setupType: 'Fair Value Gap (FVG)',
-    session: 'New York',
-    timeframe: '15m',
-    riskReward: 2.0,
-    pnl: 450,
-    date: '2026-08-04T13:00',
-    screenshots: [DEFAULT_SCREENSHOT],
-    notes: 'Filled 15m FVG, partials taken at 1R, holding for higher targets.',
-    emotion: '🎯 มีวินัย / ตามแผน (Disciplined)',
-    tpPoints: 200,
-    slPoints: 100,
-    fiboTpLevel: 'TP1',
-  },
-];
+export const DEFAULT_TRADES: Trade[] = [];
 
 export const DEFAULT_USER_TRADES_MAP: Record<string, Trade[]> = {
-  user_alex: DEFAULT_TRADES,
-  user_elena: DEFAULT_TRADES.slice(1, 4),
+  user_default: [],
 };
+

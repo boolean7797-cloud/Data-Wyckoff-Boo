@@ -29,6 +29,8 @@ import {
   DEFAULT_PAIRS,
   DEFAULT_EMOTIONS,
   DEFAULT_INVALIDATION_REASONS,
+  DEFAULT_SCALE_IN_TECHNIQUES,
+  DEFAULT_SCALE_IN_LOSS_REASONS,
   DEFAULT_USER_TRADES_MAP,
   DEFAULT_FUNDED_ACCOUNTS,
 } from './data/mockData';
@@ -74,13 +76,9 @@ export default function App() {
     try {
       const saved = localStorage.getItem(`ghost_trades_${currentUserId}`);
       if (saved) return JSON.parse(saved);
-      return (
-        DEFAULT_USER_TRADES_MAP[currentUserId] ||
-        DEFAULT_USER_TRADES_MAP['user_alex'] ||
-        []
-      );
+      return DEFAULT_USER_TRADES_MAP[currentUserId] || [];
     } catch {
-      return DEFAULT_USER_TRADES_MAP['user_alex'] || [];
+      return [];
     }
   });
 
@@ -124,6 +122,24 @@ export default function App() {
     }
   });
 
+  const [scaleInTechniques, setScaleInTechniques] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(`ghost_scale_in_techniques_${currentUserId}`);
+      return saved ? JSON.parse(saved) : DEFAULT_SCALE_IN_TECHNIQUES;
+    } catch {
+      return DEFAULT_SCALE_IN_TECHNIQUES;
+    }
+  });
+
+  const [scaleInLossReasons, setScaleInLossReasons] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(`ghost_scale_in_loss_reasons_${currentUserId}`);
+      return saved ? JSON.parse(saved) : DEFAULT_SCALE_IN_LOSS_REASONS;
+    } catch {
+      return DEFAULT_SCALE_IN_LOSS_REASONS;
+    }
+  });
+
   // 5. Funded Accounts Sub-System Config
   const [fundedAccounts, setFundedAccounts] = useState<FundedAccountConfig[]>(() => {
     try {
@@ -138,18 +154,18 @@ export default function App() {
   const [dailyTargetConfig, setDailyTargetConfig] = useState<DailyTargetConfig>(() => {
     try {
       const saved = localStorage.getItem(`ghost_daily_target_${currentUserId}`);
-      return saved ? JSON.parse(saved) : { enabled: false, targetRR: 3, targetPnL: 500 };
+      return saved ? JSON.parse(saved) : { enabled: false, targetRR: 0, targetPnL: 0 };
     } catch {
-      return { enabled: false, targetRR: 3, targetPnL: 500 };
+      return { enabled: false, targetRR: 0, targetPnL: 0 };
     }
   });
 
   const [milestoneConfig, setMilestoneConfig] = useState<MilestoneConfig>(() => {
     try {
       const saved = localStorage.getItem(`ghost_milestones_${currentUserId}`);
-      return saved ? JSON.parse(saved) : { enabled: true, targetTrades: 500 };
+      return saved ? JSON.parse(saved) : { enabled: true, targetTrades: 100 };
     } catch {
-      return { enabled: true, targetTrades: 500 };
+      return { enabled: true, targetTrades: 100 };
     }
   });
 
@@ -158,9 +174,9 @@ export default function App() {
       const saved = localStorage.getItem(`ghost_portfolios_${currentUserId}`);
       return saved
         ? JSON.parse(saved)
-        : { enabled: true, activePortfolio: 'all', personalBalance: 50000, fundedBalance: 100000 };
+        : { enabled: true, activePortfolio: 'all', personalBalance: 0, fundedBalance: 0 };
     } catch {
-      return { enabled: true, activePortfolio: 'all', personalBalance: 50000, fundedBalance: 100000 };
+      return { enabled: true, activePortfolio: 'all', personalBalance: 0, fundedBalance: 0 };
     }
   });
 
@@ -184,9 +200,11 @@ export default function App() {
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
   const [selectedTradeDetail, setSelectedTradeDetail] = useState<Trade | null>(null);
 
-  // Manage Pairs / Setups Modals
+  // Manage Pairs / Setups / Scale-In / Loss Reasons Modals
   const [isManageSetupsOpen, setIsManageSetupsOpen] = useState(false);
-  const [manageCustomType, setManageCustomType] = useState<'pairs' | null>(null);
+  const [manageCustomType, setManageCustomType] = useState<
+    'pairs' | 'scaleInTechniques' | 'scaleInLossReasons' | 'invalidationReasons' | 'emotions' | null
+  >(null);
 
   // ==========================================
   // MULTI-DEVICE CLOUD SYNC & FIREBASE ENGINE
@@ -295,6 +313,8 @@ export default function App() {
         pairs,
         emotions,
         invalidationReasons,
+        scaleInTechniques,
+        scaleInLossReasons,
         fundedAccounts,
         dailyTargetConfig,
         milestoneConfig,
@@ -324,6 +344,8 @@ export default function App() {
     pairs,
     emotions,
     invalidationReasons,
+    scaleInTechniques,
+    scaleInLossReasons,
     fundedAccounts,
     dailyTargetConfig,
     milestoneConfig,
@@ -349,6 +371,8 @@ export default function App() {
         if (Array.isArray(cloudData.pairs)) setPairs(cloudData.pairs);
         if (Array.isArray(cloudData.emotions)) setEmotions(cloudData.emotions);
         if (Array.isArray(cloudData.invalidationReasons)) setInvalidationReasons(cloudData.invalidationReasons);
+        if (Array.isArray(cloudData.scaleInTechniques)) setScaleInTechniques(cloudData.scaleInTechniques);
+        if (Array.isArray(cloudData.scaleInLossReasons)) setScaleInLossReasons(cloudData.scaleInLossReasons);
         if (Array.isArray(cloudData.fundedAccounts)) setFundedAccounts(cloudData.fundedAccounts);
         if (cloudData.dailyTargetConfig) setDailyTargetConfig(cloudData.dailyTargetConfig);
         if (cloudData.milestoneConfig) setMilestoneConfig(cloudData.milestoneConfig);
@@ -437,6 +461,22 @@ export default function App() {
       console.error(e);
     }
   }, [emotions, currentUserId]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`ghost_scale_in_techniques_${currentUserId}`, JSON.stringify(scaleInTechniques));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [scaleInTechniques, currentUserId]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`ghost_scale_in_loss_reasons_${currentUserId}`, JSON.stringify(scaleInLossReasons));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [scaleInLossReasons, currentUserId]);
 
   useEffect(() => {
     try {
@@ -559,23 +599,52 @@ export default function App() {
     setIsAddTradeOpen(true);
   };
 
-  // Pairs Management Handlers
-  const handleAddItem = (typeOrItem: string, maybeItem?: string) => {
-    const pairName = (maybeItem || typeOrItem).trim().toUpperCase();
-    if (pairName) {
-      setPairs((prev) => (prev.includes(pairName) ? prev : [...prev, pairName]));
+  // Custom Lists Management Handlers (Pairs, Scale-in Techniques, Scale-in Loss Reasons, Invalidation Reasons, Emotions)
+  const handleAddItem = (type: string, item: string) => {
+    const trimmed = item.trim();
+    if (!trimmed) return;
+    if (type === 'pairs') {
+      const upper = trimmed.toUpperCase();
+      setPairs((prev) => (prev.includes(upper) ? prev : [...prev, upper]));
+    } else if (type === 'scaleInTechniques') {
+      setScaleInTechniques((prev) => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
+    } else if (type === 'scaleInLossReasons') {
+      setScaleInLossReasons((prev) => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
+    } else if (type === 'invalidationReasons') {
+      setInvalidationReasons((prev) => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
+    } else if (type === 'emotions') {
+      setEmotions((prev) => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
     }
   };
 
-  const handleDeleteItem = (typeOrItem: string, maybeItem?: string) => {
-    const pairName = (maybeItem || typeOrItem).trim().toUpperCase();
-    if (pairName) {
-      setPairs((prev) => prev.filter((p) => p.toUpperCase() !== pairName));
+  const handleDeleteItem = (type: string, item: string) => {
+    const trimmed = item.trim();
+    if (type === 'pairs') {
+      const upper = trimmed.toUpperCase();
+      setPairs((prev) => prev.filter((p) => p.toUpperCase() !== upper));
+    } else if (type === 'scaleInTechniques') {
+      setScaleInTechniques((prev) => prev.filter((t) => t !== trimmed));
+    } else if (type === 'scaleInLossReasons') {
+      setScaleInLossReasons((prev) => prev.filter((r) => r !== trimmed));
+    } else if (type === 'invalidationReasons') {
+      setInvalidationReasons((prev) => prev.filter((r) => r !== trimmed));
+    } else if (type === 'emotions') {
+      setEmotions((prev) => prev.filter((e) => e !== trimmed));
     }
   };
 
-  const handleResetDefaults = () => {
-    setPairs(DEFAULT_PAIRS);
+  const handleResetDefaults = (type: string) => {
+    if (type === 'pairs') {
+      setPairs(DEFAULT_PAIRS);
+    } else if (type === 'scaleInTechniques') {
+      setScaleInTechniques(DEFAULT_SCALE_IN_TECHNIQUES);
+    } else if (type === 'scaleInLossReasons') {
+      setScaleInLossReasons(DEFAULT_SCALE_IN_LOSS_REASONS);
+    } else if (type === 'invalidationReasons') {
+      setInvalidationReasons(DEFAULT_INVALIDATION_REASONS);
+    } else if (type === 'emotions') {
+      setEmotions(DEFAULT_EMOTIONS);
+    }
   };
 
   // Setup Items Management Handlers
@@ -649,15 +718,54 @@ export default function App() {
   };
 
   const handleResetUserData = () => {
-    if (window.confirm('คุณแน่ใจหรือไม่ว่าต้องการล้างข้อมูลการเทรดของบัญชีนี้ทั้งหมด?')) {
-      const defaultList =
-        DEFAULT_USER_TRADES_MAP[currentUserId] ||
-        DEFAULT_USER_TRADES_MAP['user_alex'] ||
-        [];
-      setTrades(defaultList);
+    if (window.confirm('คุณแน่ใจหรือไม่ว่าต้องการล้างข้อมูลการเทรดของบัญชีนี้ทั้งหมดให้เป็น 0?')) {
+      setTrades([]);
       setSetupItems(DEFAULT_SETUP_ITEMS);
       setPairs(DEFAULT_PAIRS);
       setRecaps([]);
+      try {
+        localStorage.setItem(`ghost_trades_${currentUserId}`, JSON.stringify([]));
+        localStorage.setItem(`ghost_recaps_${currentUserId}`, JSON.stringify([]));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
+
+  const handleResetAllToZero = () => {
+    const defaultUser: User = {
+      id: 'user_default',
+      username: 'trader',
+      displayName: 'Trader',
+      title: 'Trader',
+      accountBalance: 0,
+      fundedBalance: 0,
+      createdAt: new Date().toISOString(),
+    };
+
+    setUsers([defaultUser]);
+    setCurrentUserId(defaultUser.id);
+    setTrades([]);
+    setRecaps([]);
+    setSetupItems(DEFAULT_SETUP_ITEMS);
+    setPairs(DEFAULT_PAIRS);
+    setEmotions(DEFAULT_EMOTIONS);
+    setInvalidationReasons(DEFAULT_INVALIDATION_REASONS);
+    setScaleInTechniques(DEFAULT_SCALE_IN_TECHNIQUES);
+    setScaleInLossReasons(DEFAULT_SCALE_IN_LOSS_REASONS);
+    setFundedAccounts(DEFAULT_FUNDED_ACCOUNTS);
+    setDailyTargetConfig({ enabled: false, targetRR: 0, targetPnL: 0, maxTrades: 0 });
+    setMilestoneConfig({ enabled: true, targetTrades: 100 });
+    setMultiPortfolioConfig({ enabled: true, activePortfolio: 'all', personalBalance: 0, fundedBalance: 0 });
+
+    try {
+      localStorage.clear();
+      localStorage.setItem('ghost_terminal_users', JSON.stringify([defaultUser]));
+      localStorage.setItem('ghost_terminal_current_user_id', defaultUser.id);
+      localStorage.setItem(`ghost_trades_${defaultUser.id}`, JSON.stringify([]));
+      localStorage.setItem(`ghost_recaps_${defaultUser.id}`, JSON.stringify([]));
+    } catch (err) {
+      console.error('Error clearing storage:', err);
     }
   };
 
@@ -772,6 +880,7 @@ export default function App() {
               pairs={pairs}
               onImportData={handleImportData}
               onResetUserData={handleResetUserData}
+              onResetAllToZero={handleResetAllToZero}
               onOpenManageSetups={() => setIsManageSetupsOpen(true)}
               onOpenManagePairs={() => setManageCustomType('pairs')}
               onOpenAuthModal={() => setIsAuthModalOpen(true)}
@@ -816,6 +925,11 @@ export default function App() {
         invalidationReasons={invalidationReasons}
         onAddInvalidationReason={handleAddInvalidationReason}
         onDeleteInvalidationReason={handleDeleteInvalidationReason}
+        scaleInTechniques={scaleInTechniques}
+        scaleInLossReasons={scaleInLossReasons}
+        onOpenManageScaleInTechniques={() => setManageCustomType('scaleInTechniques')}
+        onOpenManageScaleInLossReasons={() => setManageCustomType('scaleInLossReasons')}
+        onOpenManageInvalidationReasons={() => setManageCustomType('invalidationReasons')}
         onOpenManageSetups={() => setIsManageSetupsOpen(true)}
         onOpenManagePairs={() => setManageCustomType('pairs')}
         defaultPortfolio={addTradeDefaultPortfolio}
@@ -841,6 +955,7 @@ export default function App() {
         onLogin={handleLogin}
         onRegister={handleRegister}
         onDeleteUser={handleDeleteUser}
+        onResetAllToZero={handleResetAllToZero}
         onCloudSyncSuccess={() => pullFromCloud(currentUserId)}
       />
 
@@ -855,13 +970,23 @@ export default function App() {
         onResetDefaults={handleResetDefaultSetups}
       />
 
-      {/* 8. MANAGE CUSTOM PAIRS MODAL */}
-      {manageCustomType === 'pairs' && (
+      {/* 8. MANAGE CUSTOM MODAL (Pairs, Scale-in Techniques, Scale-in Loss Reasons, Invalidation Reasons) */}
+      {manageCustomType && (
         <ManageCustomModal
-          type="pairs"
+          type={manageCustomType}
           isOpen={Boolean(manageCustomType)}
           onClose={() => setManageCustomType(null)}
-          items={pairs}
+          items={
+            manageCustomType === 'pairs'
+              ? pairs
+              : manageCustomType === 'scaleInTechniques'
+              ? scaleInTechniques
+              : manageCustomType === 'scaleInLossReasons'
+              ? scaleInLossReasons
+              : manageCustomType === 'invalidationReasons'
+              ? invalidationReasons
+              : emotions
+          }
           onAddItem={handleAddItem}
           onDeleteItem={handleDeleteItem}
           onResetDefaults={handleResetDefaults}

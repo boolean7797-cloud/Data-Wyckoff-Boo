@@ -44,6 +44,7 @@ interface ProfileTabProps {
     user?: User;
   }) => void;
   onResetUserData: () => void;
+  onResetAllToZero?: () => void;
   onOpenManageSetups: () => void;
   onOpenManagePairs: () => void;
   onOpenAuthModal: () => void;
@@ -68,6 +69,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
   pairs = [],
   onImportData,
   onResetUserData,
+  onResetAllToZero,
   onOpenManageSetups,
   onOpenManagePairs,
   onOpenAuthModal,
@@ -573,18 +575,35 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
         </div>
 
         {/* Reset Warning */}
-        <div className="pt-2 border-t border-[#1e293b] flex items-center justify-between">
+        <div className="pt-2 border-t border-[#1e293b] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <span className="text-[11px] font-mono text-slate-400">
-            ล้างประวัติการเทรดของไอดีนี้ทั้งหมด:
+            รีเซ็ตข้อมูลและล้างประวัติการเทรด:
           </span>
-          <button
-            type="button"
-            onClick={onResetUserData}
-            className="px-3 py-1.5 rounded-xl bg-[#0e131f] hover:bg-slate-800 text-slate-400 hover:text-slate-200 text-xs font-mono border border-slate-700 hover:border-slate-500 transition-colors flex items-center gap-1"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>รีเซ็ตข้อมูลไอดีนี้</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onResetUserData}
+              className="px-3 py-1.5 rounded-xl bg-[#0e131f] hover:bg-slate-800 text-slate-400 hover:text-slate-200 text-xs font-mono border border-slate-700 hover:border-slate-500 transition-colors flex items-center gap-1"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>ล้างประวัติไอดีนี้ (เป็น 0)</span>
+            </button>
+
+            {onResetAllToZero && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm('คุณต้องการรีเซ็ตข้อมูลทั้งหมดในระบบให้เป็น 0 (Clean Slate เหมือนเพิ่งเริ่มใช้งาน) ใช่หรือไม่?')) {
+                    onResetAllToZero();
+                  }
+                }}
+                className="px-3 py-1.5 rounded-xl bg-red-950/60 hover:bg-red-900/80 text-red-300 hover:text-white text-xs font-mono border border-red-800 hover:border-red-600 transition-colors flex items-center gap-1"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-red-400" />
+                <span>รีเซ็ตระบบทั้งหมดเป็น 0</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

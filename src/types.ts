@@ -52,6 +52,35 @@ export type TradeDirection = 'Long' | 'Short';
 export type TradeStatus = 'COMPLETED' | 'RUNNING' | 'MISSED'; // 🏁 เสร็จแล้ว / ⏳ กำลังวิ่ง (ยังไม่ SL/TP) / 🚫 ตกรถ
 export type TrendAlignment = 'PRO_TREND' | 'COUNTER_TREND'; // 📈 ตามเทรนด์ / 📉 สวนเทรนด์
 
+export interface ScaleInEntry {
+  id: string;
+  orderNumber: number; // ไม้ที่เติม (ไม้ 2, ไม้ 3...)
+  portfolio?: PortfolioType; // พอร์ตส่วนตัว / พอร์ตกองทุน
+  pair?: string; // คู่สินทรัพย์
+  direction?: TradeDirection; // Long / Short
+  setupType?: string; // Setup / ท่าเทรดไม้ที่เติม
+  setupDescription?: string;
+  useSetup?: boolean;
+  timeframe?: string; // TF ที่เข้า
+  useTimeframe?: boolean;
+  session?: string; // Session เทรด
+  date?: string; // วันเวลาที่เข้าไม้เติม
+  entryPrice?: string; // ราคาเข้า / โซน
+  tradeStatus?: TradeStatus; // สถานะไม้เติม: COMPLETED | RUNNING | MISSED
+  trendAlignment?: TrendAlignment; // ตามเทรนด์ (PRO_TREND) หรือ สวนเทรนด์ (COUNTER_TREND)
+  usePoints?: boolean;
+  slPoints?: number; // ระยะ SL (จุด)
+  tpPoints?: number; // ระยะ TP (จุด)
+  fiboTpLevel?: 'TP1' | 'TP2' | 'TP3' | 'Custom';
+  riskReward?: number; // R:R ไม้เสริม
+  pnl?: number; // กำไร/ขาดทุนไม้เสริม ($)
+  lotSize?: number; // ล็อต (ถ้ามี)
+  outcome?: 'WIN' | 'LOSE' | 'BE' | 'RUNNING'; // ผลลัพธ์ไม้เสริม
+  lossReason?: string; // เหตุผลที่แพ้ของไม้นี้ (Invalidation Reason)
+  invalidationReason?: string;
+  notes?: string; // ข้อคิด / โซนที่เติมไม้
+}
+
 export interface Trade {
   id: string;
   portfolio?: PortfolioType; // 'personal' | 'funded'
@@ -78,6 +107,18 @@ export interface Trade {
   fiboTpLevel?: 'TP1' | 'TP2' | 'TP3' | 'Custom'; // เป้าหมาย Fibo TP
   slPips?: number; // fallback compat
   tpPips?: number; // fallback compat
+  recapVideoUrl?: string; // ลิงก์คลิปวิดีโอรีแคป
+  hasScaleIn?: boolean; // ชุดนี้ได้กดเติมไม้มั้ย (ติ๊กเปิด/ปิด)
+  scaleInCount?: number; // จำนวนไม้ที่เติมเพิ่ม (เช่น 1, 2, 3 ไม้)
+  scaleInType?: string; // รูปแบบการเติมไม้ (เช่น Pyramiding, Breakout Pullback, DCA Zone, Momentum Add)
+  scaleInOutcome?: 'WIN' | 'LOSE' | 'BE' | 'RUNNING'; // ผลลัพธ์การเทรดของไม้เติม (Outcome)
+  scaleInTradeStatus?: TradeStatus; // สถานะไม้เติม: COMPLETED | RUNNING | MISSED
+  scaleInTrendAlignment?: TrendAlignment; // กลยุทธ์ไม้เติม: ตามเทรนด์ (PRO_TREND) หรือ สวนเทรนด์ (COUNTER_TREND)
+  scaleInRiskReward?: number; // สัดส่วน Risk : Reward (RR) ของไม้เติม
+  scaleInPnL?: number; // กำไร / ขาดทุนสุทธิ ($ PnL) ของไม้เติม
+  scaleInLossReason?: string; // เหตุผลที่เติมไม้แล้วแพ้ / ข้อผิดพลาดในการเติมไม้
+  scaleInNotes?: string; // รายละเอียดการเติมไม้
+  scaleInEntries?: ScaleInEntry[]; // รายละเอียดแยกแต่ละไม้ที่เติม
 }
 
 export interface CertificateConfig {

@@ -29,8 +29,10 @@ export const ManageCustomModal: React.FC<ManageCustomModalProps> = ({
 
   const handleAdd = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!newItem.trim()) return;
-    onAddItem(type, newItem.trim().toUpperCase());
+    const trimmed = newItem.trim();
+    if (!trimmed) return;
+    const finalItem = type === 'pairs' ? trimmed.toUpperCase() : trimmed;
+    onAddItem(type, finalItem);
     setNewItem('');
   };
 
@@ -39,7 +41,22 @@ export const ManageCustomModal: React.FC<ManageCustomModalProps> = ({
       ? 'จัดการคู่เงิน / สินทรัพย์ (Manage Pairs)'
       : type === 'emotions'
       ? 'จัดการอารมณ์ / สภาพจิตใจ (Emotions)'
+      : type === 'scaleInTechniques'
+      ? 'จัดการเทคนิค / รูปแบบการเติมไม้ (Scale-in Techniques)'
+      : type === 'scaleInLossReasons'
+      ? 'จัดการเหตุผลที่เติมไม้แล้วแพ้ (Scale-in Loss Reasons)'
+      : type === 'invalidationReasons'
+      ? 'จัดการเหตุผลที่แพ้ / คัดลอส (Invalidation Reasons)'
       : `จัดการข้อมูล (${type})`;
+
+  const placeholder =
+    type === 'pairs'
+      ? 'เช่น XAUUSD, BTCUSDT, EURUSD'
+      : type === 'scaleInTechniques'
+      ? 'เช่น Pyramiding, Breakout Add, Zone DCA...'
+      : type === 'scaleInLossReasons'
+      ? 'เช่น เติมไม้เร็วเกินไป, โดนสวิงกลืน, SL บังทุนไม่ทัน...'
+      : 'ระบุชื่อรายการ';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
@@ -72,7 +89,7 @@ export const ManageCustomModal: React.FC<ManageCustomModalProps> = ({
               id="input-new-custom-item"
               value={newItem}
               onChange={(e) => setNewItem(e.target.value)}
-              placeholder={type === 'pairs' ? 'เช่น XAUUSD, BTCUSDT, EURUSD' : 'ระบุชื่อรายการ'}
+              placeholder={placeholder}
               className="flex-1 px-3.5 py-2 rounded-xl bg-[#030407] border border-[#1e293b] text-white placeholder-slate-500 text-xs font-mono focus:outline-none focus:border-slate-400 transition-colors"
             />
             <button

@@ -47,6 +47,8 @@ export interface UserCloudProfile {
   pairs: string[];
   emotions: string[];
   invalidationReasons: string[];
+  scaleInTechniques?: string[];
+  scaleInLossReasons?: string[];
   fundedAccounts: FundedAccountConfig[];
   dailyTargetConfig: DailyTargetConfig;
   milestoneConfig: MilestoneConfig;
@@ -198,10 +200,10 @@ export async function loginWithGoogle(): Promise<User> {
       email: fbUser.email || '',
       username: (fbUser.email || 'user').split('@')[0],
       displayName: fbUser.displayName || (fbUser.email || 'Trader').split('@')[0],
-      title: 'Ghost Trader',
+      title: 'Trader',
       photoURL: fbUser.photoURL || undefined,
-      accountBalance: 50000,
-      fundedBalance: 100000,
+      accountBalance: 0,
+      fundedBalance: 0,
       createdAt: new Date().toISOString(),
       lastSyncedAt: new Date().toISOString(),
       isFirebaseUser: true,

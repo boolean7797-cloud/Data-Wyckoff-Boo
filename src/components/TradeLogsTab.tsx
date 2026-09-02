@@ -62,6 +62,7 @@ export const TradeLogsTab: React.FC<TradeLogsTabProps> = ({
   const [selectedSetup, setSelectedSetup] = useState('ALL');
   const [selectedPair, setSelectedPair] = useState('ALL');
   const [selectedPortfolio, setSelectedPortfolio] = useState<'ALL' | 'personal' | 'funded'>('ALL');
+  const [selectedScaleIn, setSelectedScaleIn] = useState<'ALL' | 'WITH_SCALE_IN' | 'SINGLE_ONLY'>('ALL');
   const [showFilters, setShowFilters] = useState(false);
 
   // Zoom Image Preview Modal State
@@ -161,6 +162,14 @@ export const TradeLogsTab: React.FC<TradeLogsTabProps> = ({
         return false;
       }
 
+      // 11. Scale-In (เติมไม้)
+      if (selectedScaleIn === 'WITH_SCALE_IN' && !trade.hasScaleIn) {
+        return false;
+      }
+      if (selectedScaleIn === 'SINGLE_ONLY' && trade.hasScaleIn) {
+        return false;
+      }
+
       return true;
     });
   }, [
@@ -179,6 +188,7 @@ export const TradeLogsTab: React.FC<TradeLogsTabProps> = ({
     selectedOutcome,
     selectedSetup,
     selectedPair,
+    selectedScaleIn,
   ]);
 
   // Key KPI stats calculation based on filtered trades
@@ -500,6 +510,20 @@ export const TradeLogsTab: React.FC<TradeLogsTabProps> = ({
                 ))}
               </select>
             </div>
+
+            {/* Scale-in Filter */}
+            <div>
+              <label className="text-[10px] font-mono text-slate-400 block mb-1">การเติมไม้ (Scale-in):</label>
+              <select
+                value={selectedScaleIn}
+                onChange={(e) => setSelectedScaleIn(e.target.value as any)}
+                className="w-full bg-[#030407] border border-[#1e293b] rounded-xl px-2.5 py-1.5 text-xs font-mono text-[#f8fafc] focus:outline-none"
+              >
+                <option value="ALL">ทั้งหมด (All Orders)</option>
+                <option value="WITH_SCALE_IN">⚡ มีการเติมไม้ (Scale-in)</option>
+                <option value="SINGLE_ONLY">🎯 ไม้เดี่ยว (Single Entry)</option>
+              </select>
+            </div>
           </div>
         )}
       </div>
@@ -615,6 +639,17 @@ export const TradeLogsTab: React.FC<TradeLogsTabProps> = ({
                           <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#38bdf8]/15 text-[#38bdf8] border border-[#38bdf8]/30 flex items-center gap-0.5">
                             <Camera className="w-2.5 h-2.5" />
                             <span>Backtest</span>
+                          </span>
+                        )}
+
+                        {/* Scale-in Badge */}
+                        {trade.hasScaleIn && (
+                          <span
+                            className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-950/60 text-blue-300 border border-blue-600/40 font-bold flex items-center gap-1"
+                            title={`ชุดนี้มีการเติมไม้ (${trade.scaleInType || 'เติมไม้'})`}
+                          >
+                            <Layers className="w-3 h-3 text-blue-400" />
+                            <span>เติม +{trade.scaleInCount || 1}</span>
                           </span>
                         )}
 

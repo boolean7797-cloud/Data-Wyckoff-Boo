@@ -261,9 +261,19 @@ export const TraderCertificateModal: React.FC<TraderCertificateModalProps> = ({
               ref={certRef}
               className="relative w-full max-w-[960px] aspect-[16/10] sm:aspect-[1.45/1] min-h-[540px] bg-[#020305] text-[#f8fafc] rounded-2xl p-6 sm:p-10 border-2 border-slate-700/80 shadow-[0_0_50px_rgba(0,0,0,0.95)] overflow-hidden print:p-8 print:border-4 print:border-black print:bg-black font-['Outfit',sans-serif] flex flex-col justify-between"
               style={{
-                backgroundImage: `radial-gradient(ellipse at 50% 10%, rgba(203, 213, 225, 0.18) 0%, transparent 65%), linear-gradient(180deg, #07090f 0%, #010204 100%)`,
+                backgroundImage: `radial-gradient(ellipse at 50% 15%, rgba(225, 29, 72, 0.08) 0%, transparent 60%), radial-gradient(ellipse at 50% 10%, rgba(203, 213, 225, 0.15) 0%, transparent 70%), linear-gradient(180deg, #07090f 0%, #010204 100%)`,
               }}
             >
+              {/* Background Textured Certificate Artwork / Watermark */}
+              <div className="absolute inset-0 opacity-20 pointer-events-none select-none mix-blend-screen overflow-hidden">
+                <img
+                  src="/certificate_bg.jpg"
+                  alt="Certificate Texture"
+                  className="w-full h-full object-cover filter contrast-125"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+
               {/* Stainless Steel Dual Border Frame */}
               <div className="absolute inset-2 sm:inset-3 border border-slate-800 rounded-xl pointer-events-none" />
               <div className="absolute inset-3 sm:inset-4 border border-slate-500/40 rounded-lg pointer-events-none" />
@@ -274,18 +284,18 @@ export const TraderCertificateModal: React.FC<TraderCertificateModalProps> = ({
               <div className="absolute bottom-4 left-4 w-7 h-7 border-b-2 border-l-2 border-slate-300 pointer-events-none" />
               <div className="absolute bottom-4 right-4 w-7 h-7 border-b-2 border-r-2 border-slate-300 pointer-events-none" />
 
-              {/* Background Full-Bleed Seamless Watermark Gengar Logo (Zero square box, faint translucent glow) */}
+              {/* Background Full-Bleed Seamless Watermark Raven Logo */}
               <div
-                className="absolute inset-0 flex items-center justify-center opacity-[0.09] pointer-events-none select-none overflow-hidden mix-blend-screen"
+                className="absolute inset-0 flex items-center justify-center opacity-[0.14] pointer-events-none select-none overflow-hidden mix-blend-screen"
                 style={{
-                  maskImage: 'radial-gradient(ellipse at center, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 85%)',
-                  WebkitMaskImage: 'radial-gradient(ellipse at center, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 85%)',
+                  maskImage: 'radial-gradient(ellipse at center, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 85%)',
+                  WebkitMaskImage: 'radial-gradient(ellipse at center, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 85%)',
                 }}
               >
                 <img
                   src="/gengar_logo.jpg"
                   alt="Watermark"
-                  className="w-full h-full object-contain scale-125 filter grayscale contrast-125 brightness-110"
+                  className="w-full h-full object-contain scale-110 filter contrast-125 brightness-110"
                   referrerPolicy="no-referrer"
                 />
               </div>
