@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useId } from 'react';
 import {
   Upload,
   Image as ImageIcon,
@@ -8,7 +8,8 @@ import {
   Loader2,
   Clipboard,
   Check,
-  Sparkles,
+  Camera,
+  Smartphone,
 } from 'lucide-react';
 import { compressImageFile, formatImageUrl } from '../utils/imageCompression';
 
@@ -25,17 +26,20 @@ export const OrderImageUploader: React.FC<OrderImageUploaderProps> = ({
   images = [],
   onChange,
   label = 'รูปภาพกราฟวิเคราะห์ / สลิปออเดอร์ (Chart Screenshots & Order Slips)',
-  subLabel = 'อัปโหลดไฟล์ภาพจากเครื่อง, ลากและวาง (Drag & Drop), กดวางภาพ (Ctrl+V) หรือใส่ลิงก์รูปภาพ',
+  subLabel = 'เปิดแกลเลอรีในโทรศัพท์, ถ่ายรูป, ลากและวาง หรือกด Ctrl+V วางภาพ',
   maxImages = 8,
   compact = false,
 }) => {
+  const uniqueId = useId().replace(/:/g, '_');
+  const galleryInputId = `gallery_input_${uniqueId}`;
+  const cameraInputId = `camera_input_${uniqueId}`;
+
   const [urlInput, setUrlInput] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [copiedNotification, setCopiedNotification] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const dropZoneRef = useRef<HTMLDivElement | null>(null);
+  const [uploadProgressText, setUploadProgressText] = useState('');
 
   // Process files (compress and add)
   const processFiles = async (files: FileList | File[]) => {
@@ -43,12 +47,14 @@ export const OrderImageUploader: React.FC<OrderImageUploaderProps> = ({
 
     setIsProcessing(true);
     const newImages: string[] = [];
+    const totalFiles = Math.min(files.length, maxImages - images.length);
 
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         if (file && file.type.startsWith('image/')) {
           if (images.length + newImages.length >= maxImages) break;
+          setUploadProgressText(`กำลังประมวลผลรูปที่ ${newImages.length + 1}/${totalFiles}...`);
           const compressed = await compressImageFile(file, {
             maxWidth: 1600,
             maxHeight: 1600,
@@ -66,6 +72,7 @@ export const OrderImageUploader: React.FC<OrderImageUploaderProps> = ({
       console.error('Failed to compress image:', err);
     } finally {
       setIsProcessing(false);
+      setUploadProgressText('');
     }
   };
 
@@ -153,7 +160,25 @@ export const OrderImageUploader: React.FC<OrderImageUploaderProps> = ({
       tabIndex={0}
       className="space-y-2.5 focus:outline-none focus:ring-1 focus:ring-blue-500/40 rounded-xl"
     >
-      {/* Label and Count */}
+      {/* Hidden Native File Inputs with direct Label associations */}
+      <input
+        id={galleryInputId}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif,image/*"
+        multiple
+        onChange={handleFileChange}
+        className="sr-only hidden"
+      />
+      <input
+        id={cameraInputId}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleFileChange}
+        className="sr-only hidden"
+      />
+
+      {/* Header Label and Count */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div>
           <div className="text-xs font-mono font-bold text-slate-200 flex items-center gap-1.5">
@@ -179,24 +204,48 @@ export const OrderImageUploader: React.FC<OrderImageUploaderProps> = ({
         </div>
       </div>
 
-      {/* Hidden File Input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        multiple
-        onChange={handleFileChange}
-        className="hidden"
-      />
+      {/* MOBILE PHONE OPTIMIZED ACTION BUTTONS */}
+      <div className="grid grid-cols-2 gap-2">
+        {/* Button 1: Open Phone Gallery directly via native label association */}
+        <label
+          htmlFor={galleryInputId}
+          className="flex items-center justify-center gap-2 px-3 py-2.5 min-h-[44px] rounded-xl bg-gradient-to-r from-blue-950/70 to-indigo-950/70 hover:from-blue-900/80 hover:to-indigo-900/80 border border-blue-600/40 hover:border-blue-500 text-blue-200 hover:text-white cursor-pointer transition-all shadow-sm active:scale-[0.98] select-none text-center"
+        >
+          <Smartphone className="w-4 h-4 text-blue-400 shrink-0" />
+          <div className="text-left">
+            <div className="text-xs font-mono font-bold leading-tight flex items-center gap-1">
+              <span>เลือกจากแกลเลอรี</span>
+            </div>
+            <div className="text-[9px] font-mono text-blue-300/80 leading-tight">
+              รูปในเครื่องโทรศัพท์
+            </div>
+          </div>
+        </label>
 
-      {/* Drop Zone & Actions Container */}
-      <div
-        ref={dropZoneRef}
+        {/* Button 2: Open Camera directly on phone */}
+        <label
+          htmlFor={cameraInputId}
+          className="flex items-center justify-center gap-2 px-3 py-2.5 min-h-[44px] rounded-xl bg-[#0e131f] hover:bg-[#1a2335] border border-[#1e293b] hover:border-slate-500 text-slate-200 hover:text-white cursor-pointer transition-all shadow-sm active:scale-[0.98] select-none text-center"
+        >
+          <Camera className="w-4 h-4 text-emerald-400 shrink-0" />
+          <div className="text-left">
+            <div className="text-xs font-mono font-bold leading-tight">
+              <span>ถ่ายรูปด้วยกล้อง</span>
+            </div>
+            <div className="text-[9px] font-mono text-slate-400 leading-tight">
+              สแกนสลิป / หน้าจอ
+            </div>
+          </div>
+        </label>
+      </div>
+
+      {/* Drop Zone & Desktop Upload Area */}
+      <label
+        htmlFor={galleryInputId}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
-        className={`relative border-2 border-dashed rounded-xl transition-all cursor-pointer p-4 text-center ${
+        className={`block relative border-2 border-dashed rounded-xl transition-all cursor-pointer p-3.5 text-center select-none ${
           isDragging
             ? 'border-blue-500 bg-blue-950/30 shadow-[0_0_20px_rgba(59,130,246,0.3)]'
             : 'border-[#1e293b] hover:border-blue-500/60 bg-[#060913]/90 hover:bg-[#0e131f]'
@@ -205,17 +254,19 @@ export const OrderImageUploader: React.FC<OrderImageUploaderProps> = ({
         {isProcessing ? (
           <div className="flex flex-col items-center justify-center py-2 text-blue-300">
             <Loader2 className="w-6 h-6 animate-spin mb-1.5" />
-            <span className="text-xs font-mono font-bold">กำลังย่อและโหลดรูปภาพ...</span>
+            <span className="text-xs font-mono font-bold">
+              {uploadProgressText || 'กำลังย่อและโหลดรูปภาพ...'}
+            </span>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center gap-1.5">
+          <div className="flex flex-col items-center justify-center gap-1">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-blue-950 text-blue-400 border border-blue-600/40 flex items-center justify-center shadow-inner">
-                <Upload className="w-4 h-4" />
+              <div className="w-7 h-7 rounded-full bg-blue-950 text-blue-400 border border-blue-600/40 flex items-center justify-center shadow-inner shrink-0">
+                <Upload className="w-3.5 h-3.5" />
               </div>
               <div className="text-left">
                 <div className="text-xs font-mono font-bold text-slate-200 flex items-center gap-1.5">
-                  <span>คลิกเพื่อเลือกรูปภาพจากเครื่อง</span>
+                  <span>แตะเพื่อเลือกรูปภาพจากเครื่อง</span>
                   <span className="text-[10px] text-blue-400 font-normal">หรือลากไฟล์มาวาง</span>
                 </div>
                 <div className="text-[10px] font-mono text-slate-400 flex items-center gap-2">
@@ -229,7 +280,7 @@ export const OrderImageUploader: React.FC<OrderImageUploaderProps> = ({
             </div>
           </div>
         )}
-      </div>
+      </label>
 
       {/* URL Input Bar */}
       <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>

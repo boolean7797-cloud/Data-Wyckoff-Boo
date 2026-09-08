@@ -23,6 +23,8 @@ import {
   PlayCircle,
   Activity,
   Flame,
+  RotateCcw,
+  Smartphone,
 } from 'lucide-react';
 import {
   Trade,
@@ -165,16 +167,65 @@ export const AddEditTradeModal: React.FC<AddEditTradeModalProps> = ({
   const [screenshots, setScreenshots] = useState<string[]>([]);
   const [imageUrlInput, setImageUrlInput] = useState('');
 
+  // Draft Persistence Storage Key
+  const DRAFT_STORAGE_KEY = 'gengar_trade_form_draft_v2';
+  const [restoredFromDraft, setRestoredFromDraft] = useState(false);
+
   // Selected setup details
   const selectedSetupDetails = useMemo(() => {
     return safeSetups.find((s) => s.name === setupType);
   }, [safeSetups, setupType]);
 
-  // Hydrate on edit or reset for brand new trade
+  // Function to reset all fields back to blank defaults
+  const handleClearDraft = () => {
+    try {
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+    } catch (e) {
+      console.warn('Failed to clear draft:', e);
+    }
+    setRestoredFromDraft(false);
+    setPortfolio(defaultPortfolio);
+    setPair(pairs[0] || 'BTC/USD');
+    setDirection('Long');
+    setOutcome('WIN');
+    setTradeStatus('COMPLETED');
+    setTrendAlignment('PRO_TREND');
+    setIsScreenshotOnly(false);
+    setInvalidationReason(invalidationReasons[0] || DEFAULT_INVALIDATION_REASONS[0]);
+    setUseSetup(false);
+    setSetupType(activeSetups[0]?.name || 'Breakout & Retest');
+    setUseTimeframe(false);
+    setTimeframe('5m');
+    setUsePoints(false);
+    setTpPoints('200');
+    setSlPoints('100');
+    setFiboTpLevel('Custom');
+    setHasScaleIn(false);
+    setScaleInCount(1);
+    setScaleInType(safeScaleInTechniques[0] || 'Pyramiding (เติมไม้เมื่อกราฟวิ่งถูกทาง/มีกำไร)');
+    setScaleInOutcome('WIN');
+    setScaleInTradeStatus('COMPLETED');
+    setScaleInTrendAlignment('PRO_TREND');
+    setScaleInRiskReward(2.0);
+    setScaleInPnL('0');
+    setScaleInLossReason(safeScaleInLossReasons[0] || DEFAULT_SCALE_IN_LOSS_REASONS[0]);
+    setScaleInNotes('');
+    setScaleInEntries([]);
+    setSession(detectAutoSession());
+    setDate(getNowLocalISOString());
+    setRiskReward(2.0);
+    setPnl('0');
+    setNotes('');
+    setScreenshots([]);
+    setImageUrlInput('');
+  };
+
+  // Hydrate on edit or restore draft / reset for brand new trade
   useEffect(() => {
     if (!isOpen) return;
 
     if (activeTrade) {
+      setRestoredFromDraft(false);
       setPortfolio(activeTrade.portfolio || 'personal');
       setPair(activeTrade.pair || pairs[0] || 'BTC/USD');
       setDirection(activeTrade.direction || 'Long');
@@ -249,49 +300,204 @@ export const AddEditTradeModal: React.FC<AddEditTradeModalProps> = ({
       );
       setImageUrlInput('');
     } else {
-      // MANDATORY REQUIREMENT: For brand-new trade entry, ALL toggles START AS OFF / CLOSED
-      setPortfolio(defaultPortfolio);
-      setPair(pairs[0] || 'BTC/USD');
-      setDirection('Long');
-      setOutcome('WIN');
-      setTradeStatus('COMPLETED');
-      setTrendAlignment('PRO_TREND');
-      setIsScreenshotOnly(false);
-      setInvalidationReason(invalidationReasons[0] || DEFAULT_INVALIDATION_REASONS[0]);
+      // Check for saved draft in localStorage so data is NEVER lost when navigating back on mobile
+      let draftLoaded = false;
+      try {
+        const savedDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
+        if (savedDraft) {
+          const parsed = JSON.parse(savedDraft);
+          if (parsed && typeof parsed === 'object') {
+            if (parsed.portfolio) setPortfolio(parsed.portfolio);
+            if (parsed.pair) setPair(parsed.pair);
+            if (parsed.direction) setDirection(parsed.direction);
+            if (parsed.outcome) setOutcome(parsed.outcome);
+            if (parsed.tradeStatus) setTradeStatus(parsed.tradeStatus);
+            if (parsed.trendAlignment) setTrendAlignment(parsed.trendAlignment);
+            if (typeof parsed.isScreenshotOnly === 'boolean') setIsScreenshotOnly(parsed.isScreenshotOnly);
+            if (parsed.invalidationReason) setInvalidationReason(parsed.invalidationReason);
 
-      // ALL TOGGLES DEFAULT TO CLOSED (FALSE)
-      setUseSetup(false);
-      setSetupType(activeSetups[0]?.name || 'Breakout & Retest');
-      setUseTimeframe(false);
-      setTimeframe('5m');
-      setUsePoints(false);
-      setTpPoints('200');
-      setSlPoints('100');
-      setFiboTpLevel('Custom');
+            if (typeof parsed.useSetup === 'boolean') setUseSetup(parsed.useSetup);
+            if (parsed.setupType) setSetupType(parsed.setupType);
+            if (typeof parsed.useTimeframe === 'boolean') setUseTimeframe(parsed.useTimeframe);
+            if (parsed.timeframe) setTimeframe(parsed.timeframe);
+            if (typeof parsed.usePoints === 'boolean') setUsePoints(parsed.usePoints);
+            if (parsed.tpPoints !== undefined) setTpPoints(String(parsed.tpPoints));
+            if (parsed.slPoints !== undefined) setSlPoints(String(parsed.slPoints));
+            if (parsed.fiboTpLevel) setFiboTpLevel(parsed.fiboTpLevel);
 
-      // Scale-in default closed
-      setHasScaleIn(false);
-      setScaleInCount(1);
-      setScaleInType(safeScaleInTechniques[0] || 'Pyramiding (เติมไม้เมื่อกราฟวิ่งถูกทาง/มีกำไร)');
-      setScaleInOutcome('WIN');
-      setScaleInTradeStatus('COMPLETED');
-      setScaleInTrendAlignment('PRO_TREND');
-      setScaleInRiskReward(2.0);
-      setScaleInPnL('0');
-      setScaleInLossReason(safeScaleInLossReasons[0] || DEFAULT_SCALE_IN_LOSS_REASONS[0]);
-      setScaleInNotes('');
-      setScaleInEntries([]);
+            if (typeof parsed.hasScaleIn === 'boolean') setHasScaleIn(parsed.hasScaleIn);
+            if (parsed.scaleInCount !== undefined) setScaleInCount(Number(parsed.scaleInCount) || 1);
+            if (parsed.scaleInType) setScaleInType(parsed.scaleInType);
+            if (parsed.scaleInOutcome) setScaleInOutcome(parsed.scaleInOutcome);
+            if (parsed.scaleInTradeStatus) setScaleInTradeStatus(parsed.scaleInTradeStatus);
+            if (parsed.scaleInTrendAlignment) setScaleInTrendAlignment(parsed.scaleInTrendAlignment);
+            if (parsed.scaleInRiskReward !== undefined) setScaleInRiskReward(Number(parsed.scaleInRiskReward));
+            if (parsed.scaleInPnL !== undefined) setScaleInPnL(String(parsed.scaleInPnL));
+            if (parsed.scaleInLossReason) setScaleInLossReason(parsed.scaleInLossReason);
+            if (parsed.scaleInNotes !== undefined) setScaleInNotes(parsed.scaleInNotes);
+            if (Array.isArray(parsed.scaleInEntries)) setScaleInEntries(parsed.scaleInEntries);
 
-      // Auto-detect current session and date/time
-      setSession(detectAutoSession());
-      setDate(getNowLocalISOString());
-      setRiskReward(2.0);
-      setPnl('0');
-      setNotes('');
-      setScreenshots([]);
-      setImageUrlInput('');
+            if (parsed.session) setSession(parsed.session);
+            if (parsed.date) setDate(parsed.date);
+            if (parsed.riskReward !== undefined) setRiskReward(Number(parsed.riskReward));
+            if (parsed.pnl !== undefined) setPnl(String(parsed.pnl));
+            if (parsed.notes !== undefined) setNotes(parsed.notes);
+            if (Array.isArray(parsed.screenshots)) setScreenshots(parsed.screenshots);
+
+            setRestoredFromDraft(true);
+            draftLoaded = true;
+          }
+        }
+      } catch (err) {
+        console.warn('Could not restore draft:', err);
+      }
+
+      if (!draftLoaded) {
+        setRestoredFromDraft(false);
+        // Default brand-new trade entry: all toggles OFF
+        setPortfolio(defaultPortfolio);
+        setPair(pairs[0] || 'BTC/USD');
+        setDirection('Long');
+        setOutcome('WIN');
+        setTradeStatus('COMPLETED');
+        setTrendAlignment('PRO_TREND');
+        setIsScreenshotOnly(false);
+        setInvalidationReason(invalidationReasons[0] || DEFAULT_INVALIDATION_REASONS[0]);
+
+        setUseSetup(false);
+        setSetupType(activeSetups[0]?.name || 'Breakout & Retest');
+        setUseTimeframe(false);
+        setTimeframe('5m');
+        setUsePoints(false);
+        setTpPoints('200');
+        setSlPoints('100');
+        setFiboTpLevel('Custom');
+
+        setHasScaleIn(false);
+        setScaleInCount(1);
+        setScaleInType(safeScaleInTechniques[0] || 'Pyramiding (เติมไม้เมื่อกราฟวิ่งถูกทาง/มีกำไร)');
+        setScaleInOutcome('WIN');
+        setScaleInTradeStatus('COMPLETED');
+        setScaleInTrendAlignment('PRO_TREND');
+        setScaleInRiskReward(2.0);
+        setScaleInPnL('0');
+        setScaleInLossReason(safeScaleInLossReasons[0] || DEFAULT_SCALE_IN_LOSS_REASONS[0]);
+        setScaleInNotes('');
+        setScaleInEntries([]);
+
+        setSession(detectAutoSession());
+        setDate(getNowLocalISOString());
+        setRiskReward(2.0);
+        setPnl('0');
+        setNotes('');
+        setScreenshots([]);
+        setImageUrlInput('');
+      }
     }
   }, [activeTrade, isOpen, defaultPortfolio, pairs, activeSetups, safeScaleInTechniques, safeScaleInLossReasons, invalidationReasons]);
+
+  // Mobile Back Button / Popstate Handler: pushes state so back navigation closes modal safely without losing draft
+  useEffect(() => {
+    if (!isOpen) return;
+
+    window.history.pushState({ gengarTradeModalOpen: true }, '');
+
+    const handlePopState = () => {
+      onClose();
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [isOpen, onClose]);
+
+  // Debounced Auto-Save Draft to LocalStorage (only for new trades, not editing existing saved trades)
+  useEffect(() => {
+    if (!isOpen || activeTrade) return;
+
+    const saveTimer = setTimeout(() => {
+      try {
+        const draft = {
+          portfolio,
+          pair,
+          direction,
+          outcome,
+          tradeStatus,
+          trendAlignment,
+          isScreenshotOnly,
+          invalidationReason,
+          useSetup,
+          setupType,
+          useTimeframe,
+          timeframe,
+          usePoints,
+          tpPoints,
+          slPoints,
+          fiboTpLevel,
+          hasScaleIn,
+          scaleInCount,
+          scaleInType,
+          scaleInOutcome,
+          scaleInTradeStatus,
+          scaleInTrendAlignment,
+          scaleInRiskReward,
+          scaleInPnL,
+          scaleInLossReason,
+          scaleInNotes,
+          scaleInEntries,
+          session,
+          date,
+          riskReward,
+          pnl,
+          notes,
+          screenshots,
+          savedAt: Date.now(),
+        };
+        localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+      } catch (e) {
+        console.warn('Failed to auto-save draft:', e);
+      }
+    }, 350);
+
+    return () => clearTimeout(saveTimer);
+  }, [
+    isOpen,
+    activeTrade,
+    portfolio,
+    pair,
+    direction,
+    outcome,
+    tradeStatus,
+    trendAlignment,
+    isScreenshotOnly,
+    invalidationReason,
+    useSetup,
+    setupType,
+    useTimeframe,
+    timeframe,
+    usePoints,
+    tpPoints,
+    slPoints,
+    fiboTpLevel,
+    hasScaleIn,
+    scaleInCount,
+    scaleInType,
+    scaleInOutcome,
+    scaleInTradeStatus,
+    scaleInTrendAlignment,
+    scaleInRiskReward,
+    scaleInPnL,
+    scaleInLossReason,
+    scaleInNotes,
+    scaleInEntries,
+    session,
+    date,
+    riskReward,
+    pnl,
+    notes,
+    screenshots,
+  ]);
 
   if (!isOpen) return null;
 
@@ -429,18 +635,43 @@ export const AddEditTradeModal: React.FC<AddEditTradeModalProps> = ({
     let finalPnL = 0;
     if (tradeStatus === 'MISSED') {
       finalPnL = 0;
-    } else if (outcome === 'LOSE') {
+    } else if (outcome === 'LOSE' || parsedPnL < 0) {
       finalPnL = -Math.abs(parsedPnL);
+    } else if (parsedPnL === 0) {
+      finalPnL = 0;
     } else {
       finalPnL = Math.abs(parsedPnL);
     }
 
-    const safeRR =
-      outcome === 'LOSE'
-        ? Number(riskReward) > 0
-          ? -Math.min(500, Number(riskReward) || 1)
-          : Math.max(-500, Number(riskReward) || -1)
-        : Math.min(500, Math.max(0, Number(riskReward) || 0));
+    const rawRR = Number(riskReward) || 0;
+    let safeRR = 0;
+    if (outcome === 'LOSE' || rawRR < 0) {
+      safeRR = -Math.abs(rawRR || 1);
+    } else if (rawRR === 0) {
+      safeRR = 0;
+    } else {
+      safeRR = Math.abs(rawRR);
+    }
+
+    const rawScaleInPnL = parseFloat(scaleInPnL) || 0;
+    let finalScaleInPnL = 0;
+    if (scaleInOutcome === 'LOSE' || rawScaleInPnL < 0) {
+      finalScaleInPnL = -Math.abs(rawScaleInPnL);
+    } else if (scaleInOutcome === 'BE' || rawScaleInPnL === 0) {
+      finalScaleInPnL = 0;
+    } else {
+      finalScaleInPnL = Math.abs(rawScaleInPnL);
+    }
+
+    const rawScaleInRR = Number(scaleInRiskReward) || 0;
+    let finalScaleInRR = 0;
+    if (scaleInOutcome === 'LOSE' || rawScaleInRR < 0) {
+      finalScaleInRR = -Math.abs(rawScaleInRR || 1);
+    } else if (scaleInOutcome === 'BE' || rawScaleInRR === 0) {
+      finalScaleInRR = 0;
+    } else {
+      finalScaleInRR = Math.abs(rawScaleInRR);
+    }
 
     const newOrUpdatedTrade: Trade = {
       id: activeTrade ? activeTrade.id : `trade_${Date.now()}`,
@@ -470,24 +701,20 @@ export const AddEditTradeModal: React.FC<AddEditTradeModalProps> = ({
       scaleInOutcome: hasScaleIn ? scaleInOutcome : undefined,
       scaleInTradeStatus: hasScaleIn ? scaleInTradeStatus : undefined,
       scaleInTrendAlignment: hasScaleIn ? scaleInTrendAlignment : undefined,
-      scaleInRiskReward: hasScaleIn
-        ? scaleInOutcome === 'LOSE'
-          ? scaleInRiskReward > 0
-            ? -Math.min(500, Number(scaleInRiskReward) || 1)
-            : Math.max(-500, Number(scaleInRiskReward) || -1)
-          : Math.min(500, Math.max(0, Number(scaleInRiskReward) || 0))
-        : undefined,
-      scaleInPnL: hasScaleIn
-        ? scaleInOutcome === 'LOSE'
-          ? -Math.abs(parseFloat(scaleInPnL) || 0)
-          : scaleInOutcome === 'BE'
-          ? 0
-          : Math.abs(parseFloat(scaleInPnL) || 0)
-        : undefined,
+      scaleInRiskReward: hasScaleIn ? finalScaleInRR : undefined,
+      scaleInPnL: hasScaleIn ? finalScaleInPnL : undefined,
       scaleInLossReason: hasScaleIn && scaleInOutcome === 'LOSE' ? scaleInLossReason : undefined,
       scaleInNotes: hasScaleIn && scaleInNotes.trim() ? scaleInNotes.trim() : undefined,
       scaleInEntries: hasScaleIn && scaleInEntries.length > 0 ? scaleInEntries : undefined,
     };
+
+    // Clean up draft on successful save
+    try {
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+    } catch (err) {
+      console.warn('Failed to clear draft on save:', err);
+    }
+    setRestoredFromDraft(false);
 
     onSaveTrade(newOrUpdatedTrade);
     onClose();
@@ -530,6 +757,42 @@ export const AddEditTradeModal: React.FC<AddEditTradeModalProps> = ({
 
         {/* Scrollable Form Body */}
         <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1 font-['Outfit',sans-serif]">
+          {/* Mobile Back Navigation & Draft Persistence Banner */}
+          {!activeTrade && (
+            <div className={`p-2.5 rounded-xl border transition-all flex items-center justify-between gap-2 ${
+              restoredFromDraft
+                ? 'bg-amber-950/30 border-amber-500/40 text-amber-200'
+                : 'bg-[#0e131f] border-[#1e293b] text-slate-400'
+            }`}>
+              <div className="flex items-center gap-2 text-xs font-mono">
+                <span className="flex h-2 w-2 relative shrink-0">
+                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                    restoredFromDraft ? 'bg-amber-400' : 'bg-emerald-400'
+                  }`}></span>
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${
+                    restoredFromDraft ? 'bg-amber-500' : 'bg-emerald-500'
+                  }`}></span>
+                </span>
+                <span className="leading-tight">
+                  {restoredFromDraft
+                    ? 'กู้คืนเนื้อหาที่บันทึกค้างไว้ล่าสุดแล้ว (กดย้อนกลับข้อมูลไม่หาย)'
+                    : 'ระบบจำข้อมูลอัตโนมัติ (เปิดผ่านมือถือ/Google กดย้อนกลับเนื้อหาจะไม่หาย)'}
+                </span>
+              </div>
+
+              {restoredFromDraft && (
+                <button
+                  type="button"
+                  onClick={handleClearDraft}
+                  className="px-2 py-1 rounded-lg bg-rose-950/50 hover:bg-rose-900/80 text-rose-300 border border-rose-700/50 text-[10px] font-mono font-bold shrink-0 transition-all flex items-center gap-1"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>ล้างเริ่มใหม่</span>
+                </button>
+              )}
+            </div>
+          )}
+
           {/* ========================================================================= */}
           {/* 1. PORTFOLIO & REAL VS BACKTEST TOGGLE */}
           {/* ========================================================================= */}
@@ -920,13 +1183,13 @@ export const AddEditTradeModal: React.FC<AddEditTradeModalProps> = ({
                     if (riskReward <= 0) setRiskReward(2.0);
                   }}
                   className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all flex items-center gap-1 ${
-                    outcome === 'WIN' && tradeStatus !== 'MISSED'
+                    outcome === 'WIN' && riskReward > 0 && tradeStatus !== 'MISSED'
                       ? 'bg-emerald-600 text-white shadow-sm'
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
                   <Check className="w-3.5 h-3.5 stroke-[3]" />
-                  <span>ชนะ/กำไร (WIN)</span>
+                  <span>+ บวก R (WIN)</span>
                 </button>
 
                 <button
@@ -934,16 +1197,16 @@ export const AddEditTradeModal: React.FC<AddEditTradeModalProps> = ({
                   onClick={() => {
                     setOutcome('LOSE');
                     if (tradeStatus === 'MISSED') setTradeStatus('COMPLETED');
-                    setRiskReward(-1.0);
+                    if (riskReward >= 0) setRiskReward(-1.0);
                   }}
                   className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all flex items-center gap-1 ${
-                    outcome === 'LOSE' && tradeStatus !== 'MISSED'
+                    (outcome === 'LOSE' || riskReward < 0) && tradeStatus !== 'MISSED'
                       ? 'bg-rose-600 text-white shadow-sm'
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
                   <X className="w-3.5 h-3.5 stroke-[3]" />
-                  <span>แพ้/ขาดทุน (LOSE)</span>
+                  <span>- ลบ R (LOSE/SL)</span>
                 </button>
 
                 <button
@@ -954,91 +1217,118 @@ export const AddEditTradeModal: React.FC<AddEditTradeModalProps> = ({
                     setPnl('0');
                   }}
                   className={`px-2 py-1 rounded-lg text-[11px] font-mono font-bold transition-all ${
-                    outcome === 'WIN' && (riskReward === 0 || parseFloat(pnl) === 0)
+                    riskReward === 0 || parseFloat(pnl) === 0
                       ? 'bg-slate-700 text-slate-200 shadow-sm'
                       : 'text-slate-500 hover:text-slate-300'
                   }`}
                 >
-                  <span>เสมอทุน (BE)</span>
+                  <span>0 R (เสมอทุน BE)</span>
                 </button>
               </div>
             </div>
 
-            {/* Risk:Reward Row */}
-            <div className="space-y-2">
+            {/* Risk:Reward Row with Free Manual Input (+RR and -R) */}
+            <div className="space-y-2.5 p-3 rounded-xl bg-[#0e131f] border border-[#1e293b]">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <label className="text-xs font-mono font-bold text-slate-200">
                       {outcome === 'LOSE' || riskReward < 0
-                        ? 'สัดส่วนขาดทุน (Loss RR):'
-                        : 'สัดส่วนกำไร (Risk : Reward RR):'}
+                        ? 'สัดส่วนขาดทุน (-R / Loss RR):'
+                        : riskReward === 0
+                        ? 'สัดส่วนเสมอทุน (0 R / Breakeven):'
+                        : 'สัดส่วนกำไร (+RR / Profit RR):'}
                     </label>
                     <span
-                      className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+                      className={`text-xs font-mono font-extrabold px-2.5 py-0.5 rounded border ${
                         outcome === 'LOSE' || riskReward < 0
-                          ? 'bg-rose-950/80 text-rose-300 border-rose-500/60 shadow-[0_0_8px_rgba(225,29,72,0.25)]'
+                          ? 'bg-rose-950 text-rose-300 border-rose-500/60 shadow-[0_0_8px_rgba(225,29,72,0.25)]'
                           : riskReward === 0
                           ? 'bg-slate-800 text-slate-300 border-slate-600'
-                          : 'bg-amber-950/80 text-amber-300 border-amber-500/50'
+                          : 'bg-emerald-950 text-emerald-300 border-emerald-500/60 shadow-[0_0_8px_rgba(16,185,129,0.25)]'
                       }`}
                     >
                       {outcome === 'LOSE' || riskReward < 0
-                        ? `${riskReward < 0 ? riskReward : `-${riskReward || 1}`} RR (ขาดทุน)`
+                        ? `${riskReward < 0 ? riskReward : -Math.abs(riskReward || 1)} R (ขาดทุน/ชน SL)`
                         : riskReward === 0
-                        ? '0 RR (เสมอทุน / BE)'
-                        : `1 : ${riskReward} RR (กำไร)`}
+                        ? '0.00 R (เสมอทุน)'
+                        : `+${Math.abs(riskReward)} R (กำไร 1:${Math.abs(riskReward)})`}
                     </span>
                   </div>
                   <span className="text-[10px] font-mono text-slate-400">
-                    {outcome === 'LOSE' || riskReward < 0
-                      ? 'ไม้แพ้/ขาดทุน ระบุติดลบ เช่น -1.0 RR (ชน SL) หรือเลือกปุ่มลัดด้านขวา'
-                      : 'ระบุอัตราส่วนกำไร เช่น 1:2.0 RR หรือเลือกปุ่มลัด'}
+                    พิมพ์ตัวเลขได้อิสระ เช่น 2.5, 1.8, -1.0 หรือกดปุ่ม +/- เพื่อสลับบวก/ลบ
                   </span>
                 </div>
 
-                {/* RR Input & Presets */}
-                <div className="flex items-center gap-1.5 self-end sm:self-auto flex-wrap justify-end">
-                  <span className="text-xs font-mono text-slate-400">
-                    {outcome === 'LOSE' || riskReward < 0 ? '' : '1 :'}
-                  </span>
-                  <input
-                    type="number"
-                    min="-500"
-                    max="500"
-                    step="0.1"
-                    value={riskReward}
-                    onChange={(e) => {
-                      const val = parseFloat(e.target.value);
-                      const safeVal = isNaN(val) ? 0 : Math.min(500, Math.max(-500, val));
-                      setRiskReward(safeVal);
-                      if (safeVal < 0 && outcome !== 'LOSE') {
+                {/* RR Free-Text Input & Quick Sign Toggle Button */}
+                <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                  {/* Dedicated +/- Sign Flip Button for Mobile Telephones */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const flipped = -riskReward;
+                      setRiskReward(flipped);
+                      if (flipped < 0) {
                         setOutcome('LOSE');
-                      } else if (safeVal > 0 && outcome === 'LOSE') {
+                      } else if (flipped > 0) {
                         setOutcome('WIN');
                       }
                     }}
-                    className={`w-24 bg-[#0e131f] border rounded-xl px-2.5 py-1.5 text-sm font-mono font-extrabold text-center focus:outline-none ${
+                    title="สลับเครื่องหมายบวก/ลบ (+/-)"
+                    className={`px-2.5 py-1.5 rounded-xl text-xs font-mono font-black border transition-all ${
                       outcome === 'LOSE' || riskReward < 0
-                        ? 'border-rose-700/80 text-rose-300 focus:border-rose-400 bg-rose-950/20'
-                        : 'border-slate-600 text-white focus:border-slate-300'
+                        ? 'bg-rose-900/60 text-rose-200 border-rose-600 hover:bg-rose-800'
+                        : 'bg-emerald-900/60 text-emerald-200 border-emerald-600 hover:bg-emerald-800'
                     }`}
-                    placeholder="เช่น -1 หรือ 2.0"
-                  />
+                  >
+                    {outcome === 'LOSE' || riskReward < 0 ? 'สลับเป็น +RR' : 'สลับเป็น -R'}
+                  </button>
+
+                  <div className="relative">
+                    <span
+                      className={`absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-mono font-bold ${
+                        outcome === 'LOSE' || riskReward < 0 ? 'text-rose-400' : 'text-emerald-400'
+                      }`}
+                    >
+                      {outcome === 'LOSE' || riskReward < 0 ? '-' : '+'}
+                    </span>
+                    <input
+                      type="number"
+                      step="any"
+                      value={riskReward !== 0 ? Math.abs(riskReward) : 0}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        const safeVal = isNaN(val) ? 0 : Math.abs(val);
+                        if (outcome === 'LOSE') {
+                          setRiskReward(-safeVal);
+                        } else {
+                          setRiskReward(safeVal);
+                        }
+                      }}
+                      className={`w-24 bg-[#030407] border rounded-xl pl-6 pr-2 py-1.5 text-sm font-mono font-extrabold text-center focus:outline-none ${
+                        outcome === 'LOSE' || riskReward < 0
+                          ? 'border-rose-700/80 text-rose-300 focus:border-rose-400 bg-rose-950/20'
+                          : 'border-emerald-700/80 text-emerald-300 focus:border-emerald-400 bg-emerald-950/20'
+                      }`}
+                      placeholder="เช่น 2.0"
+                    />
+                  </div>
                   <span className="text-xs font-mono font-bold text-slate-300">RR</span>
                 </div>
               </div>
 
               {/* Quick RR Presets Bar */}
-              <div className="flex items-center gap-1 flex-wrap pt-1">
+              <div className="flex items-center gap-1 flex-wrap pt-1 border-t border-[#1e293b]/60">
                 <span className="text-[10px] font-mono text-slate-400 mr-1">ปุ่มลัด RR:</span>
                 {outcome === 'LOSE' || riskReward < 0 ? (
                   <>
                     {[
-                      { label: '-1.0R (SL มาตรฐาน)', val: -1.0 },
-                      { label: '-0.5R (คัดลอส)', val: -0.5 },
-                      { label: '-1.5R', val: -1.5 },
-                      { label: '-2.0R (Over-risk)', val: -2.0 },
+                      { label: '-1.0 R', val: -1.0 },
+                      { label: '-2.0 R', val: -2.0 },
+                      { label: '-3.0 R', val: -3.0 },
+                      { label: '-4.0 R', val: -4.0 },
+                      { label: '-5.0 R', val: -5.0 },
+                      { label: '-0.5 R', val: -0.5 },
                     ].map((item) => (
                       <button
                         key={item.val}
@@ -1047,10 +1337,10 @@ export const AddEditTradeModal: React.FC<AddEditTradeModalProps> = ({
                           setRiskReward(item.val);
                           setOutcome('LOSE');
                         }}
-                        className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold border transition-all ${
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-extrabold border transition-all ${
                           riskReward === item.val
-                            ? 'bg-rose-950 text-rose-200 border-rose-500 shadow-[0_0_8px_rgba(225,29,72,0.35)]'
-                            : 'bg-[#0e131f] text-slate-400 border-[#1e293b] hover:text-white hover:border-rose-800'
+                            ? 'bg-rose-950 text-rose-200 border-rose-500 shadow-[0_0_8px_rgba(225,29,72,0.35)] scale-105'
+                            : 'bg-[#030407] text-slate-300 border-[#1e293b] hover:text-white hover:border-rose-800'
                         }`}
                       >
                         {item.label}
@@ -1062,28 +1352,36 @@ export const AddEditTradeModal: React.FC<AddEditTradeModalProps> = ({
                         setOutcome('WIN');
                         setRiskReward(2.0);
                       }}
-                      className="px-2 py-1 rounded-lg text-[10px] font-mono text-slate-400 hover:text-emerald-300 border border-[#1e293b] hover:border-emerald-800 transition-all ml-auto"
+                      className="px-2 py-1 rounded-lg text-[10px] font-mono text-emerald-400 hover:text-emerald-300 bg-emerald-950/20 border border-emerald-800/60 hover:border-emerald-600 transition-all ml-auto flex items-center gap-1"
                     >
-                      สลับเป็นโหมดกำไร (+RR)
+                      <span>สลับเป็นกำไร (+RR)</span>
                     </button>
                   </>
                 ) : (
                   <>
-                    {[1, 1.5, 2, 2.5, 3, 4, 5].map((val) => (
+                    {[
+                      { label: '+1.0 R', val: 1 },
+                      { label: '+1.5 R', val: 1.5 },
+                      { label: '+2.0 R', val: 2 },
+                      { label: '+2.5 R', val: 2.5 },
+                      { label: '+3.0 R', val: 3 },
+                      { label: '+4.0 R', val: 4 },
+                      { label: '+5.0 R', val: 5 },
+                    ].map((item) => (
                       <button
-                        key={val}
+                        key={item.val}
                         type="button"
                         onClick={() => {
-                          setRiskReward(val);
+                          setRiskReward(item.val);
                           setOutcome('WIN');
                         }}
                         className={`px-2 py-1 rounded-lg text-[10px] font-mono font-bold border transition-all ${
-                          riskReward === val
-                            ? 'bg-blue-950 text-blue-300 border-blue-600 shadow-[0_0_8px_rgba(56,189,248,0.25)]'
-                            : 'bg-[#0e131f] text-slate-400 border-[#1e293b] hover:text-white'
+                          riskReward === item.val
+                            ? 'bg-emerald-950 text-emerald-300 border-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.25)]'
+                            : 'bg-[#030407] text-slate-400 border-[#1e293b] hover:text-white hover:border-emerald-800'
                         }`}
                       >
-                        1:{val}
+                        {item.label}
                       </button>
                     ))}
                     <button
@@ -1094,7 +1392,7 @@ export const AddEditTradeModal: React.FC<AddEditTradeModalProps> = ({
                       }}
                       className="px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold text-rose-400 bg-rose-950/30 hover:text-rose-200 border border-rose-900/60 hover:border-rose-600 transition-all ml-auto flex items-center gap-1"
                     >
-                      <span>-1.0 RR (ระบุขาดทุน)</span>
+                      <span>-1.0 R (ระบุขาดทุน)</span>
                     </button>
                   </>
                 )}
@@ -1198,44 +1496,45 @@ export const AddEditTradeModal: React.FC<AddEditTradeModalProps> = ({
               )}
             </div>
 
-            {/* PnL ($) Section with Dedicated Profit vs Loss Switch */}
-            <div className="p-3 rounded-xl bg-[#0e131f] border border-[#1e293b] space-y-2">
+            {/* PnL ($) Section with Dedicated Profit vs Loss Switch and Free Manual Input */}
+            <div className="p-3 rounded-xl bg-[#0e131f] border border-[#1e293b] space-y-2.5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <label className="text-[11px] font-mono text-slate-300 font-bold">
-                    {outcome === 'LOSE'
-                      ? 'ขาดทุนสุทธิ ($ Loss PnL):'
-                      : outcome === 'WIN'
-                      ? 'กำไรสุทธิ ($ Profit PnL):'
-                      : 'กำไร / ขาดทุนสุทธิ ($ PnL):'}
+                    {outcome === 'LOSE' || parseFloat(pnl) < 0
+                      ? 'จำนวนเงินขาดทุน (-$ Loss PnL):'
+                      : parseFloat(pnl) === 0
+                      ? 'เสมอทุน ($0 Breakeven):'
+                      : 'จำนวนเงินกำไร (+$ Profit PnL):'}
                   </label>
                   <span
-                    className={`text-xs font-mono font-extrabold px-2 py-0.5 rounded ${
-                      outcome === 'LOSE'
-                        ? 'bg-rose-950 text-rose-300 border border-rose-600/50'
-                        : outcome === 'WIN' && parseFloat(pnl) > 0
-                        ? 'bg-emerald-950 text-emerald-300 border border-emerald-600/50'
-                        : 'bg-slate-800 text-slate-300'
+                    className={`text-xs font-mono font-extrabold px-2.5 py-0.5 rounded border ${
+                      outcome === 'LOSE' || parseFloat(pnl) < 0
+                        ? 'bg-rose-950 text-rose-300 border-rose-600/50 shadow-[0_0_8px_rgba(225,29,72,0.25)]'
+                        : parseFloat(pnl) === 0
+                        ? 'bg-slate-800 text-slate-300 border-slate-600'
+                        : 'bg-emerald-950 text-emerald-300 border-emerald-600/50 shadow-[0_0_8px_rgba(16,185,129,0.25)]'
                     }`}
                   >
-                    {outcome === 'LOSE'
-                      ? `-$${Math.abs(parseFloat(pnl) || 0).toLocaleString()}`
-                      : outcome === 'WIN'
-                      ? `+$${Math.abs(parseFloat(pnl) || 0).toLocaleString()}`
-                      : '$0'}
+                    {outcome === 'LOSE' || parseFloat(pnl) < 0
+                      ? `-$${Math.abs(parseFloat(pnl) || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })} (ขาดทุน)`
+                      : parseFloat(pnl) === 0
+                      ? '$0.00 (เสมอทุน)'
+                      : `+$${Math.abs(parseFloat(pnl) || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })} (กำไร)`}
                   </span>
                 </div>
 
-                {/* Profit / Loss Type Selector */}
+                {/* Profit / Loss / BE Selector Tabs */}
                 <div className="flex rounded-lg bg-[#030407] p-0.5 border border-[#1e293b]">
                   <button
                     type="button"
                     onClick={() => {
                       setOutcome('WIN');
                       if (riskReward <= 0) setRiskReward(2.0);
+                      if (parseFloat(pnl) < 0) setPnl(String(Math.abs(parseFloat(pnl))));
                     }}
-                    className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition-all ${
-                      outcome === 'WIN'
+                    className={`px-2.5 py-1 rounded text-[10px] font-mono font-bold transition-all ${
+                      outcome === 'WIN' && parseFloat(pnl) > 0
                         ? 'bg-emerald-600 text-white shadow-sm'
                         : 'text-slate-400 hover:text-slate-200'
                     }`}
@@ -1246,38 +1545,82 @@ export const AddEditTradeModal: React.FC<AddEditTradeModalProps> = ({
                     type="button"
                     onClick={() => {
                       setOutcome('LOSE');
-                      setRiskReward(-1.0);
+                      if (riskReward >= 0) setRiskReward(-1.0);
+                      if (parseFloat(pnl) === 0) setPnl('100');
                     }}
-                    className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition-all ${
-                      outcome === 'LOSE'
+                    className={`px-2.5 py-1 rounded text-[10px] font-mono font-bold transition-all ${
+                      outcome === 'LOSE' || parseFloat(pnl) < 0
                         ? 'bg-rose-600 text-white shadow-sm'
                         : 'text-slate-400 hover:text-slate-200'
                     }`}
                   >
                     - ขาดทุน (Loss)
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPnl('0');
+                      setRiskReward(0);
+                    }}
+                    className={`px-2 py-1 rounded text-[10px] font-mono font-bold transition-all ${
+                      parseFloat(pnl) === 0
+                        ? 'bg-slate-700 text-slate-200 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-300'
+                    }`}
+                  >
+                    $0 BE
+                  </button>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5">
-                <div className="relative flex-1">
+              <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
+                {/* Dedicated +/- Sign Flip Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (outcome === 'LOSE') {
+                      setOutcome('WIN');
+                      if (riskReward < 0) setRiskReward(Math.abs(riskReward));
+                    } else {
+                      setOutcome('LOSE');
+                      if (riskReward > 0) setRiskReward(-Math.abs(riskReward));
+                    }
+                  }}
+                  title="สลับโหมด กำไร (+) หรือ ขาดทุน (-)"
+                  className={`px-2.5 py-2 rounded-xl text-xs font-mono font-black border shrink-0 transition-all ${
+                    outcome === 'LOSE'
+                      ? 'bg-rose-900/60 text-rose-200 border-rose-600 hover:bg-rose-800'
+                      : 'bg-emerald-900/60 text-emerald-200 border-emerald-600 hover:bg-emerald-800'
+                  }`}
+                >
+                  {outcome === 'LOSE' ? 'สลับเป็น +กำไร' : 'สลับเป็น -ขาดทุน'}
+                </button>
+
+                <div className="relative flex-1 min-w-[140px]">
                   <span
-                    className={`absolute left-3 top-2 text-xs font-mono font-bold ${
-                      outcome === 'LOSE' ? 'text-rose-400' : 'text-slate-400'
+                    className={`absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono font-bold ${
+                      outcome === 'LOSE' ? 'text-rose-400' : 'text-emerald-400'
                     }`}
                   >
-                    {outcome === 'LOSE' ? '-$' : '$'}
+                    {outcome === 'LOSE' ? '-$' : '+$'}
                   </span>
                   <input
                     type="number"
                     step="any"
-                    value={pnl}
-                    onChange={(e) => setPnl(e.target.value)}
-                    placeholder={outcome === 'LOSE' ? 'ระบุจำนวนเงินที่ขาดทุน เช่น 100 หรือ 500' : 'ระบุจำนวนเงินกำไร เช่น 500 หรือ 1000'}
-                    className={`w-full bg-[#030407] border rounded-xl pl-7 pr-3 py-2 text-sm font-mono font-bold focus:outline-none ${
+                    value={pnl !== '0' ? Math.abs(parseFloat(pnl) || 0) : ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setPnl(val);
+                    }}
+                    placeholder={
+                      outcome === 'LOSE'
+                        ? 'พิมพ์จำนวนเงินที่ขาดทุน เช่น 100, 250 หรือ 500'
+                        : 'พิมพ์จำนวนเงินกำไร เช่น 300, 500 หรือ 1200'
+                    }
+                    className={`w-full bg-[#030407] border rounded-xl pl-8 pr-3 py-2 text-sm font-mono font-bold focus:outline-none ${
                       outcome === 'LOSE'
                         ? 'border-rose-900/80 focus:border-rose-500 text-rose-200 bg-rose-950/20'
-                        : 'border-[#1e293b] focus:border-slate-400 text-[#f8fafc]'
+                        : 'border-emerald-900/80 focus:border-emerald-500 text-emerald-200 bg-emerald-950/20'
                     }`}
                   />
                 </div>
@@ -1290,7 +1633,7 @@ export const AddEditTradeModal: React.FC<AddEditTradeModalProps> = ({
                           type="button"
                           onClick={() => setPnl(String(preset))}
                           className={`px-2 py-1.5 rounded-lg text-xs font-mono font-bold border transition-all ${
-                            parseFloat(pnl) === preset
+                            Math.abs(parseFloat(pnl) || 0) === preset
                               ? 'bg-rose-950 text-rose-200 border-rose-500 shadow-[0_0_8px_rgba(225,29,72,0.35)]'
                               : 'bg-[#030407] text-slate-400 border-[#1e293b] hover:text-white hover:border-rose-800'
                           }`}
@@ -1298,15 +1641,15 @@ export const AddEditTradeModal: React.FC<AddEditTradeModalProps> = ({
                           -${preset}
                         </button>
                       ))
-                    : [100, 200, 300, 500, 1000].map((preset) => (
+                    : [100, 200, 300, 500, 1000, 2000].map((preset) => (
                         <button
                           key={preset}
                           type="button"
                           onClick={() => setPnl(String(preset))}
                           className={`px-2 py-1.5 rounded-lg text-xs font-mono font-bold border transition-all ${
-                            parseFloat(pnl) === preset
+                            Math.abs(parseFloat(pnl) || 0) === preset
                               ? 'bg-emerald-950 text-emerald-300 border-emerald-500/60 shadow-[0_0_8px_rgba(16,185,129,0.25)]'
-                              : 'bg-[#030407] text-slate-400 border-[#1e293b] hover:text-white'
+                              : 'bg-[#030407] text-slate-400 border-[#1e293b] hover:text-white hover:border-emerald-800'
                           }`}
                         >
                           +${preset}
@@ -1709,10 +2052,12 @@ export const AddEditTradeModal: React.FC<AddEditTradeModalProps> = ({
                       {scaleInOutcome === 'LOSE' || scaleInRiskReward < 0 ? (
                         <>
                           {[
-                            { label: '-1.0R (SL มาตรฐาน)', val: -1.0 },
-                            { label: '-0.5R (คัดลอส)', val: -0.5 },
-                            { label: '-1.5R', val: -1.5 },
-                            { label: '-2.0R (Over-risk)', val: -2.0 },
+                            { label: '-1.0 R', val: -1.0 },
+                            { label: '-2.0 R', val: -2.0 },
+                            { label: '-3.0 R', val: -3.0 },
+                            { label: '-4.0 R', val: -4.0 },
+                            { label: '-5.0 R', val: -5.0 },
+                            { label: '-0.5 R', val: -0.5 },
                           ].map((item) => (
                             <button
                               key={item.val}
@@ -1721,10 +2066,10 @@ export const AddEditTradeModal: React.FC<AddEditTradeModalProps> = ({
                                 setScaleInRiskReward(item.val);
                                 setScaleInOutcome('LOSE');
                               }}
-                              className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold border transition-all ${
+                              className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-extrabold border transition-all ${
                                 scaleInRiskReward === item.val
-                                  ? 'bg-rose-950 text-rose-200 border-rose-500 shadow-[0_0_8px_rgba(225,29,72,0.35)]'
-                                  : 'bg-[#0e131f] text-slate-400 border-[#1e293b] hover:text-white hover:border-rose-800'
+                                  ? 'bg-rose-950 text-rose-200 border-rose-500 shadow-[0_0_8px_rgba(225,29,72,0.35)] scale-105'
+                                  : 'bg-[#0e131f] text-slate-300 border-[#1e293b] hover:text-white hover:border-rose-800'
                               }`}
                             >
                               {item.label}

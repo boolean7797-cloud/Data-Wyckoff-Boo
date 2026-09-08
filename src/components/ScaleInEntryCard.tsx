@@ -644,10 +644,12 @@ export const ScaleInEntryCard: React.FC<ScaleInEntryCardProps> = ({
             {isLoss ? (
               <>
                 {[
-                  { label: '-1.0R (SL มาตรฐาน)', val: -1.0 },
-                  { label: '-0.5R (คัดลอส)', val: -0.5 },
-                  { label: '-1.5R', val: -1.5 },
-                  { label: '-2.0R (Over-risk)', val: -2.0 },
+                  { label: '-1.0 R', val: -1.0 },
+                  { label: '-2.0 R', val: -2.0 },
+                  { label: '-3.0 R', val: -3.0 },
+                  { label: '-4.0 R', val: -4.0 },
+                  { label: '-5.0 R', val: -5.0 },
+                  { label: '-0.5 R', val: -0.5 },
                 ].map((item) => (
                   <button
                     key={item.val}
@@ -656,10 +658,10 @@ export const ScaleInEntryCard: React.FC<ScaleInEntryCardProps> = ({
                       onUpdate('riskReward', item.val);
                       onUpdate('outcome', 'LOSE');
                     }}
-                    className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold border transition-all ${
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-extrabold border transition-all ${
                       riskReward === item.val
-                        ? 'bg-rose-950 text-rose-200 border-rose-500 shadow-[0_0_8px_rgba(225,29,72,0.35)]'
-                        : 'bg-[#0e131f] text-slate-400 border-[#1e293b] hover:text-white hover:border-rose-800'
+                        ? 'bg-rose-950 text-rose-200 border-rose-500 shadow-[0_0_8px_rgba(225,29,72,0.35)] scale-105'
+                        : 'bg-[#0e131f] text-slate-300 border-[#1e293b] hover:text-white hover:border-rose-800'
                     }`}
                   >
                     {item.label}
